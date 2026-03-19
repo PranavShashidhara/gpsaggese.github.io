@@ -3,6 +3,9 @@ Utility Module for Causal Analysis of Financial Tradability
 Contains all helper functions for data collection, preprocessing, feature engineering, 
 analysis, and causal inference.
 
+EXERCISE #1 ADDITION: Hit Rate → PnL Simulation Framework
+New functions added for Monte Carlo simulation and analysis
+
 Data Source: Kaggle Bitcoin Historical Data (mczielinski/bitcoin-historical-data)
 Using exact kagglehub code from Kaggle documentation
 """
@@ -12,6 +15,7 @@ import numpy as np
 import logging
 from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Optional
+from dataclasses import dataclass
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -22,6 +26,180 @@ warnings.filterwarnings('ignore')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# EXERCISE #1: SIMULATION CONFIGURATION
+# =============================================================================
+
+@dataclass
+class SimulationConfig:
+    """Configuration for Exercise #1 simulation."""
+    asset: str = 'BTC'  # Asset symbol
+    frequency: str = '1h'  # Time frequency
+    start_date: str = '2023-01-01'
+    end_date: str = '2023-12-31'
+    hit_rates: List[float] = None  # Hit rates to test
+    commission: float = 0.001  # 0.1% per trade
+    slippage: float = 0.0005  # 0.05% per trade
+    num_simulations: int = 10000  # Monte Carlo runs
+    seed: int = 42
+    
+    def __post_init__(self):
+        if self.hit_rates is None:
+            self.hit_rates = np.arange(0.45, 0.56, 0.01)  # 45% to 55% in 1% steps
+
+
+# =============================================================================
+# EXERCISE #1: DATA PIPELINE FUNCTIONS
+# =============================================================================
+
+def load_exercise_data(config: SimulationConfig) -> pd.DataFrame:
+    """
+    Load cryptocurrency data at specified frequency.
+    Easy to swap: asset, frequency, date range.
+    
+    Parameters:
+    -----------
+    config : SimulationConfig
+        Configuration with asset, frequency, dates
+    
+    Returns:
+    --------
+    pd.DataFrame
+        OHLCV data with timestamp index
+    """
+    logger.info(f'Loading {config.asset} data at {config.frequency} frequency')
+    
+    try:
+        # Load Bitcoin data from Kaggle
+        df = load_kaggle_bitcoin_data(
+            start_date=config.start_date,
+            end_date=config.end_date
+        )
+        
+        # Resample to target frequency
+        if config.frequency != '1min':
+            df = resample_to_interval(df, config.frequency)
+        
+        logger.info(f'Loaded {len(df)} records for {config.asset}')
+        return df
+        
+    except Exception as e:
+        logger.warning(f'Could not load from Kaggle: {e}. Using synthetic data.')
+        df = generate_synthetic_bitcoin_data(
+            start_date=config.start_date,
+            end_date=config.end_date,
+            interval=config.frequency
+        )
+        return df
+
+
+def compute_returns(df: pd.DataFrame) -> Tuple[np.ndarray, pd.Series]:
+    """
+    Compute percentage returns from OHLCV data.
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        OHLCV data with close prices
+    
+    Returns:
+    --------
+    Tuple of (returns array, timestamps)
+    """
+    returns = df['close'].pct_change().dropna()
+    timestamps = df['timestamp'].iloc[1:]  # Align with returns
+    
+    logger.info(f'Computed {len(returns)} returns')
+    return returns.values, timestamps.values
+
+
+# =============================================================================
+# EXERCISE #1: CORE SIMULATION ENGINE
+# =============================================================================
+
+def simulate_trading_with_hit_rate(
+    returns: np.ndarray,
+    hit_rate: float,
+    num_simulations: int = 10000,
+    transaction_cost: float = 0.0015,  # 0.15% per trade
+    trade_probability: float = 1.0,    # probability of taking a trade
+    seed: int = 42
+) -> Tuple[np.ndarray, Dict]:
+
+    np.random.seed(seed)
+
+    pnl_simulations = np.zeros(num_simulations)
+    winning_trades = np.zeros(num_simulations)
+    losing_trades = np.zeros(num_simulations)
+    max_drawdown_list = np.zeros(num_simulations)
+
+    n_returns = len(returns)
+
+    for sim_idx in range(num_simulations):
+
+        # Sample returns
+        sampled_returns = np.random.choice(returns, size=n_returns, replace=True)
+
+        # True direction of returns (+1 or -1)
+        true_direction = np.sign(sampled_returns)
+        true_direction[true_direction == 0] = 1  # handle zero returns
+
+        # Generate correctness (1 = correct prediction, 0 = wrong)
+        is_correct = np.random.binomial(1, hit_rate, n_returns)
+
+        # Predicted direction
+        predicted_direction = np.where(
+            is_correct == 1,
+            true_direction,
+            -true_direction
+        )
+
+        # Trade decision (optional filtering)
+        trade_mask = np.random.rand(n_returns) < trade_probability
+
+        # PnL calculation
+        pnl_per_bar = trade_mask * (predicted_direction * sampled_returns)
+
+        # Apply transaction cost ONLY when trading
+        pnl_per_bar -= trade_mask * transaction_cost
+
+        # Cumulative PnL
+        cumulative_pnl = np.cumsum(pnl_per_bar)
+        total_pnl = cumulative_pnl[-1]
+        pnl_simulations[sim_idx] = total_pnl
+
+        # Stats
+        winning_trades[sim_idx] = np.sum(pnl_per_bar > 0)
+        losing_trades[sim_idx] = np.sum(pnl_per_bar < 0)
+
+        # Max drawdown
+        running_max = np.maximum.accumulate(cumulative_pnl)
+        drawdown = cumulative_pnl - running_max
+        max_drawdown_list[sim_idx] = np.min(drawdown)
+
+    # Aggregate statistics
+    stats_dict = {
+        'hit_rate': hit_rate,
+        'mean_pnl': np.mean(pnl_simulations),
+        'std_pnl': np.std(pnl_simulations),
+        'min_pnl': np.min(pnl_simulations),
+        'max_pnl': np.max(pnl_simulations),
+        'percentile_5': np.percentile(pnl_simulations, 5),
+        'percentile_50': np.percentile(pnl_simulations, 50),
+        'percentile_95': np.percentile(pnl_simulations, 95),
+        'prob_profit': np.mean(pnl_simulations > 0),
+        'sharpe_ratio': (
+            np.mean(pnl_simulations) / np.std(pnl_simulations)
+            if np.std(pnl_simulations) > 0 else 0
+        ),
+        'avg_winning_trades': np.mean(winning_trades),
+        'avg_losing_trades': np.mean(losing_trades),
+        'avg_max_drawdown': np.mean(max_drawdown_list)
+    }
+
+    return pnl_simulations, stats_dict
+
 
 # =============================================================================
 # DATA COLLECTION FUNCTIONS - KAGGLE DATASET
@@ -232,9 +410,6 @@ def preprocess_data(df: pd.DataFrame, handle_missing: bool = True,
     
     initial_len = len(df)
     
-    #if handle_missing:
-     #   df = df.fillna(method='ffill').fillna(method='bfill')
-    
     if remove_outliers_flag:
         Q1 = df[['close', 'volume']].quantile(0.25)
         Q3 = df[['close', 'volume']].quantile(0.75)
@@ -411,11 +586,9 @@ def analyze_predictability_by_horizon(
     if horizons is None:
         horizons = [1, 5, 10, 20]
 
-    # Optional: limit dataset size for faster iteration
     if max_samples is not None:
         df = df.iloc[-max_samples:].copy()
 
-    # Ensure sorted by time
     df = df.sort_values('timestamp').reset_index(drop=True)
 
     exclude_cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
@@ -435,13 +608,11 @@ def analyze_predictability_by_horizon(
             X = df_clean[feature_cols]
             y = df_clean[target_col]
 
-            # Time-based split (NO leakage)
             split_idx = int(len(df_clean) * train_ratio)
 
             X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
             y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
-            # Model selection
             if model_type == 'logistic':
                 model = LogisticRegression(max_iter=1000, random_state=42, n_jobs=-1)
             else:
@@ -459,7 +630,6 @@ def analyze_predictability_by_horizon(
             acc = accuracy_score(y_test, y_pred)
             auc = roc_auc_score(y_test, y_proba)
 
-            # Safe precision/recall/F1
             precision = precision_score(y_test, y_pred, zero_division=0)
             recall = recall_score(y_test, y_pred, zero_division=0)
             f1 = f1_score(y_test, y_pred, zero_division=0)
@@ -718,6 +888,7 @@ def detect_market_regimes(df: pd.DataFrame, volatility_window: int = 20) -> pd.D
     logger.info(f"Regimes detected: {df['regime'].value_counts().to_dict()}")
     return df
 
+
 def analyze_with_transaction_costs(pnl_df: pd.DataFrame, commission: float = 0.001, 
                                    slippage: float = 0.0005) -> pd.DataFrame:
     """
@@ -740,26 +911,24 @@ def analyze_with_transaction_costs(pnl_df: pd.DataFrame, commission: float = 0.0
     pnl_adjusted = pnl_df.copy()
     total_cost = commission + slippage
 
-    # Convert percentage strings to numeric floats if needed
     for col in ['expected_pnl_per_trade', 'expected_total_pnl']:
         if col in pnl_adjusted.columns:
             pnl_adjusted[col] = (
                 pnl_adjusted[col]
-                .astype(str)                   # ensure string type
-                .str.replace('%', '', regex=False)  # remove %
-                .astype(float) / 100.0         # convert to fraction
+                .astype(str)
+                .str.replace('%', '', regex=False)
+                .astype(float) / 100.0
             )
 
-    # Subtract total costs per trade
     if 'expected_pnl_per_trade' in pnl_adjusted.columns:
         pnl_adjusted['expected_pnl_after_costs'] = \
             pnl_adjusted['expected_pnl_per_trade'] - total_cost
 
-        # Mark whether strategy is tradeable (positive expected PnL after costs)
         pnl_adjusted['tradeable'] = pnl_adjusted['expected_pnl_after_costs'] > 0
 
     logger.info(f"Analysis adjusted for costs: commission={commission}, slippage={slippage}")
     return pnl_adjusted
+
 
 # =============================================================================
 # MONTE CARLO SIMULATION FUNCTIONS
@@ -954,4 +1123,7 @@ def export_results(results_dict: Dict, output_dir: str = '.') -> None:
             logger.info(f"Exported: {filepath}")
 
 
-logger.info("Utility module loaded successfully - Using Kaggle Bitcoin Historical Data with exact code")
+logger.info("="*80)
+logger.info("Utility module loaded successfully")
+logger.info("Exercise #1 functions available: load_exercise1_data, compute_returns, simulate_trading_with_hit_rate")
+logger.info("="*80)
