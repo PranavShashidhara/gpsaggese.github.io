@@ -7,3 +7,5 @@ seaborn>=0.11.0
 scipy>=1.7.0
 python-dateutil>=2.8.0
 jupyterlab>=3.0.0
+kagglehub[pandas-datasets]>=1.0.0
+stats>=0.1.2a
