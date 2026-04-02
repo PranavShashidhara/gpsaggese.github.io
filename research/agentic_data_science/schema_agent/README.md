@@ -2,52 +2,103 @@
 
 Automated statistical profiling and LLM-powered semantic analysis for CSV datasets. Generates column-level insights including semantic meaning, data quality assessment, and testable business hypotheses.
 
-## Setup and Usage
+## Features
 
-To navigate to the repository:
-```bash
-cd research/agentic_data_science/schema_agent/schema_agent_utils.py
-```
-Setup the OpenAI key in your environment before running in a .env file
-
-## Current Files
-
-- **`requirements.txt`** – Lists the Python dependencies required to run the agent
-- **`schema_agent_utils.py`** – Contains functions for parsing data, computing column statistics, and preparing summaries for LLM-based analysis
-- **`global_ecommerce_forecasting.csv`** – The dataset used for testing
-
+- **Temporal Detection:** Auto-detects and converts date/datetime columns across multiple formats
+- **Statistical Profiling:** Computes numeric summaries, data quality metrics, and categorical distributions
+- **LLM Semantic Analysis:** Generates column roles (ID, Feature, Target, Timestamp), semantic meaning, and hypotheses
+- **Cost Optimization:** Filter columns before LLM analysis to control token usage and API costs
+- **Multi-Format Output:** JSON reports and Markdown summaries
 
 ## Setup
 
-### 1. Load CSV
+Go into the schema folder: 
+```bash 
+> cd research/agentic_data_science/schema_agent
+```
 
-- Read into a `pandas.DataFrame`
-- Ensure the DataFrame is non-empty
+Install the requirements with the command: 
+```bash
+> pip install -r requirements.txt
+```
+Set the OPENAI_API_KEY in the .env file: 
+```bash 
+> export OPENAI_API_KEY=sk-...
+```
+## Usage
 
-### 2. Compute Column Stats
+### Basic
 
-- Identify column types: numeric, categorical, datetime
-- Compute per-column statistics:
-  - **Numeric**: min, max, mean, median
-  - **Categorical**: unique count, top values
-  - **Datetime**: ranges, durations
-- Capture null percentages and sample values
+```bash
+python schema_agent_utils.py data.csv
+```
 
-### 3. Build LLM Prompt
+Outputs:
+- `data_profile_report.json` — Machine-readable report
+- `data_profile_summary.md` — Human-readable summary
 
-- Serialize per-column stats with optional user context
-- Designed for efficient LLM input (summaries only, not full data)
+### Advanced
 
-### 4. LLM Analysis
+```bash
+# Multiple files with tags
+python schema_agent_utils.py dataset1.csv dataset2.csv --tags sales_2024 inv_q1
 
-- Generate hypotheses about each column's meaning
-- Suggest semantic roles (identifier, timestamp, category, etc.)
-- Highlight data quality concerns
+# Cost-optimized: only high-null columns
+python schema_agent_utils.py data.csv --llm-scope nulls --model gpt-4o-mini
 
-### 5. Merge Results
+# Custom metrics and output
+python schema_agent_utils.py data.csv --metrics mean std max --output-json my_report.json
+```
 
-- Combine pandas statistics and LLM output by column name
+## Command-Line Arguments
 
-### 6. Export
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `csv_paths` | Required | One or more CSV file paths |
+| `--tags` | File stems | Tags for each CSV (must match count) |
+| `--model` | `gpt-4o` | LLM model (`gpt-4o`, `gpt-4o-mini`, etc.) |
+| `--llm-scope` | `all` | Which columns to profile: `all`, `semantic`, `nulls` |
+| `--metrics` | Subset | Numeric metrics: `mean`, `std`, `min`, `25%`, `50%`, `75%`, `max` |
+| `--use-langchain` | False | Use LangChain instead of hllmcli |
+| `--output-json` | `data_profile_report.json` | JSON report path |
+| `--output-md` | `data_profile_summary.md` | Markdown summary path |
 
-- JSON output for downstream automation or agents
+## LLM Scoping
+
+- **`all`** — Every column (highest cost, comprehensive)
+- **`semantic`** — Non-numeric columns only
+- **`nulls`** — Columns with >5% null values (cost-optimized)
+
+## Python API
+
+```python
+import research.agentic_data_science.schema_agent.schema_agent_utils as radssasau
+
+tag_to_df, stats = radssasau.run_pipeline(
+    csv_paths=["data.csv"],
+    model="gpt-4o-mini",
+    llm_scope="semantic"
+)
+```
+
+## Output
+
+### data_profile_report.json
+Structured report with column profiles, technical stats, and LLM insights.
+
+### data_profile_summary.md
+Formatted table summary: Column | Meaning | Role | Quality | Hypotheses
+
+## Troubleshooting
+
+**API Key Error:**
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+**Validation Errors:**
+- Use `--llm-scope nulls` or `--llm-scope semantic` to reduce columns
+- Try `--model gpt-4o-mini`
+
+**Datetime Detection:**
+Skipped automatically if no temporal columns detected.
