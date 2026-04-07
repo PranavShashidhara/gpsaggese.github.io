@@ -4,10 +4,10 @@ Data Profiler Agent — modular implementation.
 Main pipeline and CLI orchestration for end-to-end data profiling.
 
 Usage:
-    python schema_agent.py data.csv
-    python schema_agent.py data.csv --model gpt-4o-mini --llm-scope nulls
-    python schema_agent.py data.csv --metrics mean std min max --output-json out.json
-    python schema_agent.py data.csv data2.csv --tags sales inventory
+    ./schema_agent.py data.csv
+    ./schema_agent.py data.csv --model gpt-4o-mini --llm-scope nulls
+    ./schema_agent.py data.csv --metrics mean std min max --output-json out.json
+    ./schema_agent.py data.csv data2.csv --tags sales inventory
 
 Import as:
 
@@ -19,11 +19,10 @@ import logging
 import os
 import sys
 import typing
-import pytz
 
 import dotenv
 import pandas as pd
-import schema_agent_hllmcli as radsasah
+import research.agentic_data_science.schema_agent.schema_agent_hllmcli as radsasah
 import schema_agent_loader as radsasal
 import schema_agent_report as radsasar
 import schema_agent_stats as radsasas
@@ -38,13 +37,11 @@ import helpers.hlogging as hloggin
 dotenv.load_dotenv()
 api_key = os.environ.get("OPENAI_API_KEY")
 
-# Use dassert to ensure the API key exists
 hdbg.dassert(api_key, "OPENAI_API_KEY not found in environment.")
 
 _LOG = hloggin.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
 
-# Ensure sys is imported for the handler
 console_handler = logging.StreamHandler(sys.stdout)
 hloggin.set_v2_formatter(
     ch=console_handler,
@@ -74,23 +71,47 @@ def run_pipeline(
 ) -> typing.Tuple[typing.Dict[str, pd.DataFrame], typing.Dict[str, typing.Any]]:
     """
     Execute the full data profiling pipeline over one or more CSV files.
+
+    :param csv_paths: One or more CSV file paths to profile.
+    :type csv_paths: typing.List[str]
+    :param tags: Human-readable tag for each CSV. Defaults to filename stems.
+    :type tags: typing.Optional[typing.List[str]]
+    :param model: LLM model name passed to OpenAI / hllmcli.
+    :type model: str
+    :param metrics: Numeric metrics to include. Defaults to DEFAULT_METRICS.
+    :type metrics: typing.Optional[typing.List[str]]
+    :param llm_scope: "all", "semantic", or "nulls" — controls which columns are LLM-profiled.
+    :type llm_scope: str
+    :param output_json: Path for the merged JSON report.
+    :type output_json: str
+    :param output_md: Path for the Markdown summary.
+    :type output_md: str
+    :param use_langchain: Use LangChain chain instead of hllmcli for LLM calls.
+    :type use_langchain: bool
+    :return: A tuple containing a dict of tag -> df mappings, and a stats dict.
+    :rtype: typing.Tuple[typing.Dict[str, pd.DataFrame], typing.Dict[str, typing.Any]]
     """
+    hdbg.dassert_isinstance(csv_paths, list)
+    hdbg.dassert_lt(0, len(csv_paths), "csv_paths must not be empty.")
+
     if tags is None:
         tags = [os.path.splitext(os.path.basename(p))[0] for p in csv_paths]
 
-    # Use dassert_eq to check that the number of tags matches files
     hdbg.dassert_eq(
         len(tags), 
         len(csv_paths), 
-        msg="Number of tags must match number of CSV paths"
+        "Length of tags (%d) must match csv_paths (%d).", 
+        len(tags), 
+        len(csv_paths)
     )
 
     # --- Load & type-coerce ---
     tag_to_df, cat_cols_map = radsasal.prepare_dataframes(csv_paths, tags)
 
-    # Merge datetime metadata
-    combined_for_dt = pd.concat(list(tag_to_df.values()), axis=0, ignore_index=True)
-    _, datetime_meta = radsasal.infer_and_convert_datetime_columns(combined_for_dt)
+    # Merge datetime metadata across all DataFrames
+    _, datetime_meta = radsasal.infer_and_convert_datetime_columns(
+        pd.concat(list(tag_to_df.values()), axis=0, ignore_index=True)
+    )
 
     # --- Compute stats ---
     stats = radsasas.compute_llm_agent_stats(
@@ -103,7 +124,6 @@ def run_pipeline(
     # --- LLM scope ---
     combined_df = pd.concat(list(tag_to_df.values()), axis=0, ignore_index=True)
     columns_for_llm = radsasah._select_columns_for_llm(combined_df, scope=llm_scope)
-    
     _LOG.info(
         "LLM will profile %d / %d columns (scope=%s).",
         len(columns_for_llm),
@@ -127,10 +147,7 @@ def run_pipeline(
         )
 
     # --- Build column profiles ---
-    # Ensure tag_to_df is not empty before accessing
-    hdbg.dassert(tag_to_df, "No dataframes were loaded.")
     primary_df = list(tag_to_df.values())[0]
-    
     column_profiles = radsasar.build_column_profiles(
         df=primary_df,
         stats=stats,
@@ -151,6 +168,7 @@ def run_pipeline(
     )
 
     return tag_to_df, stats
+
 
 # =============================================================================
 # CLI
@@ -232,9 +250,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """
-    CLI entry point.
-
-    Parses arguments and delegates to run_pipeline().
+    CLI entry point. Parses arguments and delegates to run_pipeline().
     """
     parser = _build_arg_parser()
     args = parser.parse_args()
