@@ -14,19 +14,22 @@ Automated statistical profiling and LLM-powered semantic analysis for CSV datase
 
 Go into the schema folder:
 ```bash
-cd research/agentic_data_science/schema_agent
+> cd research/agentic_data_science/schema_agent
 ```
 
 Install the requirements:
 ```bash
-pip install -r requirements.txt
+> pip install -r requirements.txt
 ```
 
 Set the `OPENAI_API_KEY` in your environment:
 ```bash
-export OPENAI_API_KEY=sk-...
+> export OPENAI_API_KEY=sk-...
 ```
-
+Make the script executable 
+```bash 
+> chmod +x schema_agent.py
+```
 ## Module Structure
 
 The agent is split into six focused modules:
@@ -45,7 +48,7 @@ The agent is split into six focused modules:
 ### Basic
 
 ```bash
-python schema_agent.py data.csv
+> ./schema_agent.py data.csv
 ```
 
 Outputs:
@@ -56,16 +59,16 @@ Outputs:
 
 ```bash
 # Multiple files with tags
-python schema_agent.py dataset1.csv dataset2.csv --tags sales_2024 inv_q1
+> ./schema_agent.py dataset1.csv dataset2.csv --tags sales_2024 inv_q1
 
 # Cost-optimized: only high-null columns
-python schema_agent.py data.csv --llm-scope nulls --model gpt-4o-mini
+> ./schema_agent.py data.csv --llm-scope nulls --model gpt-4o-mini
 
 # Custom metrics and output
-python schema_agent.py data.csv --metrics mean std max --output-json my_report.json
+> ./schema_agent.py data.csv --metrics mean std max --output-json my_report.json
 
 # LangChain backend
-python schema_agent.py data.csv --use-langchain
+> ./schema_agent.py data.csv --use-langchain
 ```
 
 ## Command-Line Arguments
@@ -123,7 +126,7 @@ Formatted table summary: Column | Meaning | Role | Quality | Hypotheses
 
 **API Key Error:**
 ```bash
-export OPENAI_API_KEY=sk-...
+> export OPENAI_API_KEY=sk-...
 ```
 
 **Validation Errors:**

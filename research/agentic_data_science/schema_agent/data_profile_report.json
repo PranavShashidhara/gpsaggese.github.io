@@ -1,0 +1,608 @@
+{
+    "report_metadata": {
+        "version": "1.2",
+        "agent": "Data-Profiler-Agent",
+        "generated_at": "2026-04-07T16:06:18.296448Z"
+    },
+    "column_profiles": [
+        {
+            "column": "order_datetime",
+            "dtype": "datetime64[us]",
+            "null_pct": 0.0,
+            "unique_count": 14903,
+            "sample_values": [
+                "2009-12-01 07:45:00",
+                "2009-12-01 07:45:00",
+                "2009-12-01 09:06:00"
+            ]
+        },
+        {
+            "column": "year",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 2,
+            "sample_values": [
+                2009,
+                2009,
+                2009
+            ],
+            "mean": 2009.92928,
+            "std": 0.2563578334933183,
+            "min": 2009.0,
+            "median": 2010.0,
+            "max": 2010.0
+        },
+        {
+            "column": "month",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 12,
+            "sample_values": [
+                12,
+                12,
+                12
+            ],
+            "mean": 7.37759,
+            "std": 3.456656661667856,
+            "min": 1.0,
+            "median": 8.0,
+            "max": 12.0
+        },
+        {
+            "column": "week_of_year",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 52,
+            "sample_values": [
+                49,
+                49,
+                49
+            ],
+            "mean": 29.91514,
+            "std": 15.003268635903897,
+            "min": 1.0,
+            "median": 33.0,
+            "max": 52.0
+        },
+        {
+            "column": "day_of_week",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 7,
+            "sample_values": [
+                1,
+                1,
+                1
+            ],
+            "mean": 2.58328,
+            "std": 1.9231592308007859,
+            "min": 0.0,
+            "median": 2.0,
+            "max": 6.0
+        },
+        {
+            "column": "order_hour",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 14,
+            "sample_values": [
+                7,
+                7,
+                9
+            ],
+            "mean": 12.68047,
+            "std": 2.35158794833593,
+            "min": 7.0,
+            "median": 13.0,
+            "max": 20.0
+        },
+        {
+            "column": "is_weekend",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 2,
+            "sample_values": [
+                0,
+                0,
+                0
+            ],
+            "mean": 0.15396,
+            "std": 0.36091220674314933,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 1.0
+        },
+        {
+            "column": "country",
+            "dtype": "str",
+            "null_pct": 0.0,
+            "unique_count": 34,
+            "sample_values": [
+                "United Kingdom",
+                "United Kingdom",
+                "United Kingdom"
+            ],
+            "top_values": {
+                "count": {
+                    "United Kingdom": 64417,
+                    "Ireland": 8507,
+                    "Germany": 7654
+                },
+                "pct [%]": {
+                    "United Kingdom": 64.417,
+                    "Ireland": 8.507000000000001,
+                    "Germany": 7.654
+                }
+            },
+            "semantic_meaning": "Represents the country where the transaction originated.",
+            "role": "Feature",
+            "data_quality_notes": "Data is well-distributed across several countries with a predominance in the United Kingdom.",
+            "hypotheses": [
+                "Transactions from the United Kingdom have a higher total value than other countries.",
+                "Countries with a lower transaction count like Sweden have a higher average transaction value.",
+                "Country-specific marketing strategies positively impact sales volume."
+            ]
+        },
+        {
+            "column": "country_code",
+            "dtype": "str",
+            "null_pct": 0.0,
+            "unique_count": 34,
+            "sample_values": [
+                "GBR",
+                "GBR",
+                "GBR"
+            ],
+            "top_values": {
+                "count": {
+                    "GBR": 64417,
+                    "IRL": 8507,
+                    "DEU": 7654
+                },
+                "pct [%]": {
+                    "GBR": 64.417,
+                    "IRL": 8.507000000000001,
+                    "DEU": 7.654
+                }
+            },
+            "semantic_meaning": "3-letter code representing the country of each transaction.",
+            "role": "Feature",
+            "data_quality_notes": "Consistent with country, providing coded labels for countries.",
+            "hypotheses": [
+                "Country codes correlate strongly with country-specific purchasing patterns.",
+                "The use of certain country codes predicts higher shipping costs.",
+                "Country codes are better predictors for regional discounts than country names."
+            ]
+        },
+        {
+            "column": "product_id",
+            "dtype": "str",
+            "null_pct": 0.0,
+            "unique_count": 3623,
+            "sample_values": [
+                "21523",
+                "79323W",
+                "82582"
+            ],
+            "top_values": {
+                "count": {
+                    "POST": 731,
+                    "85123A": 615,
+                    "21212": 438
+                },
+                "pct [%]": {
+                    "POST": 0.731,
+                    "85123A": 0.615,
+                    "21212": 0.438
+                }
+            },
+            "semantic_meaning": "Unique identifier for each product sold.",
+            "role": "Feature",
+            "data_quality_notes": "Varied distribution across products indicates a potential for high product diversity.",
+            "hypotheses": [
+                "Products with higher sale counts like 'POST' have a higher discount rate applied.",
+                "Products with lower counts have a higher average profit margin.",
+                "Rarely sold products are linked with specific promotional campaigns."
+            ]
+        },
+        {
+            "column": "customer_id",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 4012,
+            "sample_values": [
+                13085,
+                13085,
+                13078
+            ],
+            "mean": 14768.12664,
+            "std": 1799.1647503828826,
+            "min": 12346.0,
+            "median": 14646.0,
+            "max": 18287.0
+        },
+        {
+            "column": "unit_price_gbp",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 300,
+            "sample_values": [
+                5.95,
+                6.75,
+                2.1
+            ],
+            "mean": 3.88915772,
+            "std": 59.75020429686513,
+            "min": 0.001,
+            "median": 1.95,
+            "max": 10953.5
+        },
+        {
+            "column": "quantity_sold",
+            "dtype": "int64",
+            "null_pct": 0.0,
+            "unique_count": 232,
+            "sample_values": [
+                10,
+                12,
+                12
+            ],
+            "mean": 18.65779,
+            "std": 159.34650236322747,
+            "min": 1.0,
+            "median": 6.0,
+            "max": 19152.0
+        },
+        {
+            "column": "sales_amount_gbp",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 1541,
+            "sample_values": [
+                59.5,
+                81.0,
+                25.200000000000003
+            ],
+            "mean": 26.948917120000004,
+            "std": 92.39021385230444,
+            "min": 0.001,
+            "median": 14.98,
+            "max": 10953.5
+        },
+        {
+            "column": "population_total",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 55,
+            "sample_values": [
+                62276270.0,
+                62276270.0,
+                62276270.0
+            ],
+            "mean": 54098116.95651,
+            "std": 26644482.35245398,
+            "min": 318041.0,
+            "median": 62766365.0,
+            "max": 309378227.0
+        },
+        {
+            "column": "gdp_current_usd",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 55,
+            "sample_values": [
+                2412840006231.5,
+                2412840006231.5,
+                2412840006231.5
+            ],
+            "mean": 2161192799869.4167,
+            "std": 1115049256125.8184,
+            "min": 9035824366.00804,
+            "median": 2485482596184.709,
+            "max": 15048971000000.0
+        },
+        {
+            "column": "gdp_growth_pct",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 55,
+            "sample_values": [
+                -17.633975690892566,
+                -17.633975690892566,
+                -17.633975690892566
+            ],
+            "mean": 0.46262588609441824,
+            "std": 6.134116051369821,
+            "min": -19.62987001225588,
+            "median": 3.010667502428644,
+            "max": 32.50404703691798
+        },
+        {
+            "column": "inflation_consumer_pct",
+            "dtype": "float64",
+            "null_pct": 0.0,
+            "unique_count": 55,
+            "sample_values": [
+                1.89709031895291,
+                1.89709031895291,
+                1.89709031895291
+            ],
+            "mean": 1.1042501219771699,
+            "std": 1.6555131180385045,
+            "min": -15.1829798865339,
+            "median": 1.58908069179591,
+            "max": 16.5278863640702
+        }
+    ],
+    "technical_stats": {
+        "temporal_boundaries": null,
+        "quality_reports": {},
+        "categorical_distributions": {
+            "ecommerce_data": {
+                "country": {
+                    "United Kingdom": {
+                        "count": 64417,
+                        "pct [%]": 64.417
+                    },
+                    "Ireland": {
+                        "count": 8507,
+                        "pct [%]": 8.507000000000001
+                    },
+                    "Germany": {
+                        "count": 7654,
+                        "pct [%]": 7.654
+                    },
+                    "France": {
+                        "count": 5470,
+                        "pct [%]": 5.47
+                    },
+                    "Netherlands": {
+                        "count": 2729,
+                        "pct [%]": 2.7289999999999996
+                    },
+                    "Spain": {
+                        "count": 1235,
+                        "pct [%]": 1.2349999999999999
+                    },
+                    "Switzerland": {
+                        "count": 1170,
+                        "pct [%]": 1.17
+                    },
+                    "Belgium": {
+                        "count": 1037,
+                        "pct [%]": 1.0370000000000001
+                    },
+                    "Portugal": {
+                        "count": 984,
+                        "pct [%]": 0.984
+                    },
+                    "Sweden": {
+                        "count": 868,
+                        "pct [%]": 0.868
+                    }
+                },
+                "country_code": {
+                    "GBR": {
+                        "count": 64417,
+                        "pct [%]": 64.417
+                    },
+                    "IRL": {
+                        "count": 8507,
+                        "pct [%]": 8.507000000000001
+                    },
+                    "DEU": {
+                        "count": 7654,
+                        "pct [%]": 7.654
+                    },
+                    "FRA": {
+                        "count": 5470,
+                        "pct [%]": 5.47
+                    },
+                    "NLD": {
+                        "count": 2729,
+                        "pct [%]": 2.7289999999999996
+                    },
+                    "ESP": {
+                        "count": 1235,
+                        "pct [%]": 1.2349999999999999
+                    },
+                    "CHE": {
+                        "count": 1170,
+                        "pct [%]": 1.17
+                    },
+                    "BEL": {
+                        "count": 1037,
+                        "pct [%]": 1.0370000000000001
+                    },
+                    "PRT": {
+                        "count": 984,
+                        "pct [%]": 0.984
+                    },
+                    "SWE": {
+                        "count": 868,
+                        "pct [%]": 0.868
+                    }
+                },
+                "product_id": {
+                    "POST": {
+                        "count": 731,
+                        "pct [%]": 0.731
+                    },
+                    "85123A": {
+                        "count": 615,
+                        "pct [%]": 0.615
+                    },
+                    "21212": {
+                        "count": 438,
+                        "pct [%]": 0.438
+                    },
+                    "22423": {
+                        "count": 437,
+                        "pct [%]": 0.437
+                    },
+                    "85099B": {
+                        "count": 391,
+                        "pct [%]": 0.391
+                    },
+                    "20725": {
+                        "count": 334,
+                        "pct [%]": 0.334
+                    },
+                    "84991": {
+                        "count": 298,
+                        "pct [%]": 0.298
+                    },
+                    "20914": {
+                        "count": 295,
+                        "pct [%]": 0.295
+                    },
+                    "21232": {
+                        "count": 295,
+                        "pct [%]": 0.295
+                    },
+                    "84879": {
+                        "count": 285,
+                        "pct [%]": 0.28500000000000003
+                    }
+                }
+            }
+        },
+        "numeric_summary": {
+            "ecommerce_data": {
+                "year": {
+                    "mean": 2009.92928,
+                    "std": 0.2563578334933183,
+                    "min": 2009.0,
+                    "median": 2010.0,
+                    "max": 2010.0
+                },
+                "month": {
+                    "mean": 7.37759,
+                    "std": 3.456656661667856,
+                    "min": 1.0,
+                    "median": 8.0,
+                    "max": 12.0
+                },
+                "week_of_year": {
+                    "mean": 29.91514,
+                    "std": 15.003268635903897,
+                    "min": 1.0,
+                    "median": 33.0,
+                    "max": 52.0
+                },
+                "day_of_week": {
+                    "mean": 2.58328,
+                    "std": 1.9231592308007859,
+                    "min": 0.0,
+                    "median": 2.0,
+                    "max": 6.0
+                },
+                "order_hour": {
+                    "mean": 12.68047,
+                    "std": 2.35158794833593,
+                    "min": 7.0,
+                    "median": 13.0,
+                    "max": 20.0
+                },
+                "is_weekend": {
+                    "mean": 0.15396,
+                    "std": 0.36091220674314933,
+                    "min": 0.0,
+                    "median": 0.0,
+                    "max": 1.0
+                },
+                "customer_id": {
+                    "mean": 14768.12664,
+                    "std": 1799.1647503828826,
+                    "min": 12346.0,
+                    "median": 14646.0,
+                    "max": 18287.0
+                },
+                "unit_price_gbp": {
+                    "mean": 3.88915772,
+                    "std": 59.75020429686513,
+                    "min": 0.001,
+                    "median": 1.95,
+                    "max": 10953.5
+                },
+                "quantity_sold": {
+                    "mean": 18.65779,
+                    "std": 159.34650236322747,
+                    "min": 1.0,
+                    "median": 6.0,
+                    "max": 19152.0
+                },
+                "sales_amount_gbp": {
+                    "mean": 26.948917120000004,
+                    "std": 92.39021385230444,
+                    "min": 0.001,
+                    "median": 14.98,
+                    "max": 10953.5
+                },
+                "population_total": {
+                    "mean": 54098116.95651,
+                    "std": 26644482.35245398,
+                    "min": 318041.0,
+                    "median": 62766365.0,
+                    "max": 309378227.0
+                },
+                "gdp_current_usd": {
+                    "mean": 2161192799869.4167,
+                    "std": 1115049256125.8184,
+                    "min": 9035824366.00804,
+                    "median": 2485482596184.709,
+                    "max": 15048971000000.0
+                },
+                "gdp_growth_pct": {
+                    "mean": 0.46262588609441824,
+                    "std": 6.134116051369821,
+                    "min": -19.62987001225588,
+                    "median": 3.010667502428644,
+                    "max": 32.50404703691798
+                },
+                "inflation_consumer_pct": {
+                    "mean": 1.1042501219771699,
+                    "std": 1.6555131180385045,
+                    "min": -15.1829798865339,
+                    "median": 1.58908069179591,
+                    "max": 16.5278863640702
+                }
+            }
+        },
+        "datetime_columns": {}
+    },
+    "semantic_insights": {
+        "columns": {
+            "country": {
+                "semantic_meaning": "Represents the country where the transaction originated.",
+                "role": "Feature",
+                "data_quality_notes": "Data is well-distributed across several countries with a predominance in the United Kingdom.",
+                "hypotheses": [
+                    "Transactions from the United Kingdom have a higher total value than other countries.",
+                    "Countries with a lower transaction count like Sweden have a higher average transaction value.",
+                    "Country-specific marketing strategies positively impact sales volume."
+                ]
+            },
+            "country_code": {
+                "semantic_meaning": "3-letter code representing the country of each transaction.",
+                "role": "Feature",
+                "data_quality_notes": "Consistent with country, providing coded labels for countries.",
+                "hypotheses": [
+                    "Country codes correlate strongly with country-specific purchasing patterns.",
+                    "The use of certain country codes predicts higher shipping costs.",
+                    "Country codes are better predictors for regional discounts than country names."
+                ]
+            },
+            "product_id": {
+                "semantic_meaning": "Unique identifier for each product sold.",
+                "role": "Feature",
+                "data_quality_notes": "Varied distribution across products indicates a potential for high product diversity.",
+                "hypotheses": [
+                    "Products with higher sale counts like 'POST' have a higher discount rate applied.",
+                    "Products with lower counts have a higher average profit margin.",
+                    "Rarely sold products are linked with specific promotional campaigns."
+                ]
+            }
+        }
+    }
+}

@@ -10,9 +10,11 @@ import typing
 import langchain_core.output_parsers as lcop
 import langchain_core.prompts as lcpr
 import langchain_openai as lco
+import pandas as pd
 import pydantic
 import schema_agent_models as radsasam
 
+import helpers.hdbg as hdbg
 import helpers.hllm_cli as hllmcli
 import helpers.hlogging as hloggin
 
@@ -27,20 +29,19 @@ def _select_columns_for_llm(
     """
     Return the list of column names that should be sent to the LLM.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-    scope : str
-        "all"      — every column
-        "semantic" — non-numeric columns only (object / category / string)
-        "nulls"    — columns with null fraction above null_threshold
-    null_threshold : float
-        Fraction of nulls required for "nulls" scope. Default 5 %.
-
-    Returns
-    -------
-    list of str
+    :param df: Input dataframe.
+    :type df: pd.DataFrame
+    :param scope: "all" — every column, "semantic" — non-numeric columns
+        only, "nulls" — columns with high nulls.
+    :type scope: str
+    :param null_threshold: Fraction of nulls required for "nulls" scope.
+        Default 0.05.
+    :type null_threshold: float
+    :return: List of valid columns to process.
+    :rtype: typing.List[str]
     """
+    hdbg.dassert_isinstance(df, pd.DataFrame)
+
     if scope == "all":
         return list(df.columns)
 
@@ -74,17 +75,16 @@ def build_llm_prompt(
     Serialize statistical data into a structured string prompt for LLM
     consumption.
 
-    Parameters
-    ----------
-    stats : dict
-        Output of compute_llm_agent_stats().
-    columns_to_include : list of str, optional
-        Subset of column names to include in the prompt. None = all.
-
-    Returns
-    -------
-    str
+    :param stats: Output of compute_llm_agent_stats().
+    :type stats: typing.Dict[str, typing.Any]
+    :param columns_to_include: Subset of column names to include in the
+        prompt. None = all.
+    :type columns_to_include: typing.Optional[typing.List[str]]
+    :return: Formatted string prompt.
+    :rtype: str
     """
+    hdbg.dassert_isinstance(stats, dict)
+
     prompt_segments = [
         "You are a Senior Data Scientist and Domain Expert.",
         "Analyze the provided dataset statistics and generate a profile for each column.",
@@ -132,20 +132,20 @@ def generate_hypotheses_via_cli(
 
     Parses and Pydantic-validates the LLM response against DatasetInsights.
 
-    Parameters
-    ----------
-    stats : dict
-    model : str
-    columns_to_include : list of str, optional
-        If provided, only these columns are sent to the LLM (cost control).
-
-    Returns
-    -------
-    dict  — DatasetInsights-shaped dict, or {"error": ...} on failure.
+    :param stats: Computed dataset statistics.
+    :type stats: typing.Dict[str, typing.Any]
+    :param model: The target LLM model.
+    :type model: str
+    :param columns_to_include: Subset of column names to include.
+    :type columns_to_include: typing.Optional[typing.List[str]]
+    :return: DatasetInsights-shaped dict, or {"error": ...} on failure.
+    :rtype: typing.Dict[str, typing.Any]
     """
+    hdbg.dassert_isinstance(stats, dict)
+
     _LOG.info("Generating hypotheses via hllmcli (model=%s)...", model)
 
-    schema_json = radsasam.atasetInsights.model_json_schema()
+    schema_json = radsasam.DatasetInsights.model_json_schema()
     user_prompt = build_llm_prompt(stats, columns_to_include=columns_to_include)
     system_prompt = (
         "You are a Senior Data Scientist. Analyze the following data statistics.\n"
@@ -171,7 +171,7 @@ def generate_hypotheses_via_cli(
         )
         raw = json.loads(cleaned)
 
-        # Pydantic validation — raises ValidationError on schema mismatch.
+        # Pydantic validation
         validated = radsasam.DatasetInsights.model_validate(raw)
         return validated.model_dump()
 
@@ -194,18 +194,18 @@ def get_llm_semantic_insights_langchain(
     Process dataset metadata via LangChain to extract structured semantic
     insights.
 
-    Uses JsonOutputParser alongside the Pydantic schema. Validates output.
+    Uses JsonOutputParser alongside the Pydantic schema. Validates
+    output.
 
-    Parameters
-    ----------
-    prompt_text : str
-        Serialized stats from build_llm_prompt().
-    model : str
-
-    Returns
-    -------
-    dict
+    :param prompt_text: Serialized stats from build_llm_prompt().
+    :type prompt_text: str
+    :param model: The target LLM model.
+    :type model: str
+    :return: Validated insights dictionary.
+    :rtype: typing.Dict[str, typing.Any]
     """
+    hdbg.dassert_isinstance(prompt_text, str)
+
     _LOG.info("Querying LLM via LangChain (%s)...", model)
     llm = lco.ChatOpenAI(model=model, temperature=0)
     parser = lcop.JsonOutputParser(pydantic_object=radsasam.DatasetInsights)
@@ -224,7 +224,6 @@ def get_llm_semantic_insights_langchain(
     chain = prompt | llm | parser
     try:
         result = chain.invoke({"metadata_stats": prompt_text})
-        # Validate against Pydantic schema.
         validated = radsasam.DatasetInsights.model_validate(result)
         return validated.model_dump()
     except pydantic.ValidationError as e:

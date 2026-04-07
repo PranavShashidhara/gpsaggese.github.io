@@ -13,6 +13,7 @@ import typing
 
 import pandas as pd
 
+import helpers.hdbg as hdbg
 import helpers.hlogging as hloggin
 import helpers.hpandas_conversion as hpanconv
 import helpers.hpandas_io as hpanio
@@ -24,22 +25,20 @@ def load_csv(csv_path: str) -> pd.DataFrame:
     """
     Load a CSV into a DataFrame with clear error handling.
 
-    Parameters
-    ----------
-    csv_path : str
-        Path to the CSV file.
-
-    Returns
-    -------
-    pd.DataFrame
+    :param csv_path: Path to the CSV file.
+    :type csv_path: str
+    :return: Loaded dataframe.
+    :rtype: pd.DataFrame
     """
+    hdbg.dassert_isinstance(csv_path, str)
     try:
         df = hpanio.read_csv_to_df(csv_path)
     except FileNotFoundError:
         _LOG.error("CSV not found at '%s'.", csv_path)
         raise
-    if df.empty:
-        raise ValueError(f"CSV at '{csv_path}' loaded as an empty DataFrame.")
+        
+    hdbg.dassert_lt(0, len(df), "CSV at '%s' loaded as an empty DataFrame.", csv_path)
+    
     _LOG.info(
         "Loaded '%s': %d rows × %d columns.", csv_path, len(df), len(df.columns)
     )
@@ -61,19 +60,17 @@ def infer_and_convert_datetime_columns(
     Uses sampling for performance. Returns the updated DataFrame and a
     metadata dict with inference details per column.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-    sample_size : int
-        Number of rows to sample when testing format compliance.
-    threshold : float
-        Minimum fraction of parsed values required to accept a column as temporal.
-
-    Returns
-    -------
-    (pd.DataFrame, dict)
-        Updated DataFrame with converted columns + metadata per column.
+    :param df: Input DataFrame.
+    :type df: pd.DataFrame
+    :param sample_size: Number of rows to sample when testing format compliance.
+    :type sample_size: int
+    :param threshold: Minimum fraction of parsed values required to accept a column as temporal.
+    :type threshold: float
+    :return: Updated DataFrame with converted columns + metadata per column.
+    :rtype: typing.Tuple[pd.DataFrame, typing.Dict[str, typing.Any]]
     """
+    hdbg.dassert_isinstance(df, pd.DataFrame)
+    
     COMMON_FORMATS = [
         "%Y-%m-%d",
         "%d-%m-%Y",
@@ -166,16 +163,16 @@ def prepare_dataframes(
 
     Applies type coercion, datetime inference, and categorical detection.
 
-    Parameters
-    ----------
-    csv_paths : list of str
-    tags : list of str, optional
-        Human-readable tags; defaults to filename stems.
-
-    Returns
-    -------
-    (dict of tag → df, dict of tag → categorical_columns)
+    :param csv_paths: List of CSV file paths.
+    :type csv_paths: typing.List[str]
+    :param tags: Human-readable tags; defaults to filename stems.
+    :type tags: typing.Optional[typing.List[str]]
+    :return: A tuple containing a dict mapping tags to DataFrames, and a dict mapping tags to categorical columns.
+    :rtype: typing.Tuple[typing.Dict[str, pd.DataFrame], typing.Dict[str, typing.List[str]]]
     """
+    hdbg.dassert_isinstance(csv_paths, list)
+    hdbg.dassert_lt(0, len(csv_paths))
+    
     tag_to_df: typing.Dict[str, pd.DataFrame] = {}
     cat_cols_map: typing.Dict[str, typing.List[str]] = {}
 

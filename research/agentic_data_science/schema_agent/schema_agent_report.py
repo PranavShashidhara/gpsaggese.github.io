@@ -14,6 +14,7 @@ import typing
 
 import pandas as pd
 
+import helpers.hdbg as hdbg
 import helpers.hlogging as hloggin
 
 _LOG = hloggin.getLogger(__name__)
@@ -42,6 +43,9 @@ def build_column_profiles(
     """
     profiles: typing.List[typing.Dict[str, typing.Any]] = []
 
+    hdbg.dassert_isinstance(df, pd.DataFrame)
+    hdbg.dassert_isinstance(stats, dict)
+    hdbg.dassert_isinstance(insights, dict)
     numeric_summary = stats.get("numeric_summary", {})
     categorical_stats = stats.get("categorical_distributions", {})
     datetime_meta = stats.get("datetime_columns", {})
@@ -115,6 +119,11 @@ def merge_and_export_results(
     output_path : str
     """
     _LOG.info("Merging results...")
+    hdbg.dassert_isinstance(stats, dict)
+    hdbg.dassert_isinstance(insights, dict)
+    hdbg.dassert_isinstance(column_profiles, list)
+    hdbg.dassert_isinstance(output_path, str)
+    hdbg.dassert(output_path, "output_path must be a non-empty string.")
     serializable_stats = _make_serializable(stats)
 
     final_report = {
@@ -166,6 +175,11 @@ def export_markdown_from_profiles(
         if val is None:
             return ""
         return str(val).replace("|", "\\|").replace("\n", " ")
+
+    hdbg.dassert_isinstance(column_profiles, list)
+    hdbg.dassert_lt(0, len(column_profiles), "column_profiles must be non-empty.")
+    hdbg.dassert_isinstance(output_path, str)
+    hdbg.dassert(output_path, "output_path must be a non-empty string.")
 
     def _fmt(val: typing.Any) -> str:
         if isinstance(val, int):

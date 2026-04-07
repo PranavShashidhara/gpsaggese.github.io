@@ -13,6 +13,7 @@ import typing
 
 import pandas as pd
 
+import helpers.hdbg as hdbg
 import helpers.hlogging as hloggin
 import helpers.hpandas_stats as hpanstat
 
@@ -61,6 +62,8 @@ def compute_llm_agent_stats(
         numeric_summary.
     """
     metrics = _resolve_metrics(metrics)
+    hdbg.dassert_isinstance(tag_to_df, dict)
+    hdbg.dassert_lt(0, len(tag_to_df), "tag_to_df must be non-empty.")
     dataframe_stats: typing.Dict[str, typing.Any] = {}
 
     # 1. Temporal boundaries
@@ -98,14 +101,18 @@ def compute_llm_agent_stats(
     dataframe_stats["categorical_distributions"] = {}
     if categorical_cols_map:
         for tag, cols in categorical_cols_map.items():
-            if tag not in tag_to_df:
-                _LOG.warning("Tag '%s' not found in tag_to_df; skipping.", tag)
-                continue
+            hdbg.dassert_in(
+                tag, tag_to_df, "Tag '%s' not found in tag_to_df.", tag
+            )
             dataframe_stats["categorical_distributions"][tag] = {}
             for col in cols:
-                if col not in tag_to_df[tag].columns:
-                    _LOG.warning("Column '%s' not in '%s'; skipping.", col, tag)
-                    continue
+                hdbg.dassert_in(
+                    col,
+                    tag_to_df[tag].columns,
+                    "Column '%s' not found in dataset '%s'.",
+                    col,
+                    tag,
+                )
                 dist = hpanstat.get_value_counts_stats_df(tag_to_df[tag], col)
                 dataframe_stats["categorical_distributions"][tag][col] = dist
                 print(
