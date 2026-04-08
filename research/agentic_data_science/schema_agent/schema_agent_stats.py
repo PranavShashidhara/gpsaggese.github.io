@@ -78,23 +78,24 @@ def compute_llm_agent_stats(
     # 2. Data quality
     dataframe_stats["quality_reports"] = {}
     for tag, df in tag_to_df.items():
-        numeric_df = df.select_dtypes(include="number")
+        # Select ONLY actual numeric columns for the quality math
+        numeric_df = df.select_dtypes(include=["int64", "float64"])
+        
         if numeric_df.empty:
-            _LOG.warning(
-                "No numeric columns in '%s'; skipping quality report", tag
-            )
+            _LOG.warning("No numeric columns in '%s'; skipping quality report", tag)
             continue
-        df_stamped = hpanstat.add_end_download_timestamp(numeric_df.copy())
+            
         try:
+            # Pass ONLY the numeric dataframe here
             quality = hpanstat.report_zero_nan_inf_stats(
-                df_stamped,
+                numeric_df,
                 zero_threshold=1e-9,
                 verbose=True,
                 as_txt=True,
             )
             dataframe_stats["quality_reports"][tag] = quality
-            print(f"\n=== Quality Report: {tag} ===\n", quality.to_string())
-        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"\n=== Quality Report: {tag} ===\n", quality)
+        except Exception as e:
             _LOG.warning("Quality report failed for '%s': %s", tag, e)
 
     # 3. Categorical distributions

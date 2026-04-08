@@ -45,98 +45,54 @@ def load_csv(csv_path: str) -> pd.DataFrame:
     return df
 
 
-# keep legacy name for backwards compatibility
-load_employee_data = load_csv
-
-
 def infer_and_convert_datetime_columns(
     df: pd.DataFrame,
     sample_size: int = 100,
     threshold: float = 0.8,
 ) -> typing.Tuple[pd.DataFrame, typing.Dict[str, typing.Any]]:
-    """
-    Detect and convert date/datetime columns in a DataFrame.
-
-    Uses sampling for performance. Returns the updated DataFrame and a
-    metadata dict with inference details per column.
-
-    :param df: Input DataFrame.
-    :type df: pd.DataFrame
-    :param sample_size: Number of rows to sample when testing format compliance.
-    :type sample_size: int
-    :param threshold: Minimum fraction of parsed values required to accept a column as temporal.
-    :type threshold: float
-    :return: Updated DataFrame with converted columns + metadata per column.
-    :rtype: typing.Tuple[pd.DataFrame, typing.Dict[str, typing.Any]]
-    """
-    hdbg.dassert_isinstance(df, pd.DataFrame)
-    
-    COMMON_FORMATS = [
-        "%Y-%m-%d",
-        "%d-%m-%Y",
-        "%m-%d-%Y",
-        "%Y/%m/%d",
-        "%d/%m/%Y",
-        "%m/%d/%Y",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-        "%d-%m-%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M:%S",
-    ]
-
     metadata: typing.Dict[str, typing.Any] = {}
     df_out = df.copy()
 
     for col in df.columns:
-        if not (
-            pd.api.types.is_object_dtype(df[col])
-            or pd.api.types.is_string_dtype(df[col])
-        ):
+        # 1. If it's already datetime, just ensure UTC awareness
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df_out[col] = pd.to_datetime(df[col], utc=True)
+            metadata[col] = {
+                "semantic_type": "temporal",
+                "granularity": "datetime",
+                "format": "pre-converted",
+                "confidence": 1.0,
+            }
             continue
 
-        series = df[col].dropna().astype(str)
-        if series.empty:
+        # 2. Only attempt conversion on strings/objects
+        if not (pd.api.types.is_object_dtype(df[col]) or pd.api.types.is_string_dtype(df[col])):
             continue
 
-        sample = series.head(sample_size)
-        best_format: typing.Optional[str] = None
-        best_score = 0.0
-
-        for fmt in COMMON_FORMATS:
-            success = sum(1 for val in sample if _try_strptime(val, fmt))
-            score = success / len(sample)
-            if score > best_score:
-                best_score = score
-                best_format = fmt
-
-        if best_score >= threshold:
-            parsed = pd.to_datetime(df[col], format=best_format, errors="coerce")
-            used_format = best_format
-        else:
-            parsed = pd.to_datetime(df[col], errors="coerce")
-            used_format = None
-
-        confidence = float(parsed.notna().mean())
-        if confidence < threshold:
+        # Try to parse
+        try:
+            # We use errors="coerce" so non-dates become NaT
+            parsed = pd.to_datetime(df[col], errors="coerce", utc=True)
+            
+            valid_count = parsed.notna().sum()
+            if valid_count == 0:
+                continue
+                
+            confidence = float(valid_count / len(df[col]))
+            
+            # Only convert if it meets our confidence threshold
+            if confidence >= threshold:
+                df_out[col] = parsed
+                has_time = (parsed.dt.time != pd.Timestamp("00:00:00").time()).any()
+                metadata[col] = {
+                    "semantic_type": "temporal",
+                    "granularity": "datetime" if has_time else "date",
+                    "format": "inferred",
+                    "confidence": confidence,
+                }
+                _LOG.info("Converted column '%s' to datetime", col)
+        except Exception:
             continue
-
-        has_time = (parsed.dt.time != pd.Timestamp("00:00:00").time()).any()
-        col_type = "datetime" if has_time else "date"
-        df_out[col] = parsed
-
-        metadata[col] = {
-            "semantic_type": "temporal",
-            "granularity": col_type,
-            "format": used_format,
-            "confidence": confidence,
-        }
-        _LOG.info(
-            "Column '%s' detected as %s (format=%s, confidence=%.2f)",
-            col,
-            col_type,
-            used_format,
-            confidence,
-        )
 
     return df_out, metadata
 
@@ -152,38 +108,47 @@ def _try_strptime(val: str, fmt: str) -> bool:
         return False
 
 
+
 def prepare_dataframes(
     csv_paths: typing.List[str],
     tags: typing.Optional[typing.List[str]] = None,
 ) -> typing.Tuple[
-    typing.Dict[str, pd.DataFrame], typing.Dict[str, typing.List[str]]
+    typing.Dict[str, pd.DataFrame], 
+    typing.Dict[str, typing.List[str]],
+    typing.Dict[str, typing.Any]  # Added return type for metadata
 ]:
     """
     Load and prepare all CSV files in one pass.
-
-    Applies type coercion, datetime inference, and categorical detection.
-
-    :param csv_paths: List of CSV file paths.
-    :type csv_paths: typing.List[str]
-    :param tags: Human-readable tags; defaults to filename stems.
-    :type tags: typing.Optional[typing.List[str]]
-    :return: A tuple containing a dict mapping tags to DataFrames, and a dict mapping tags to categorical columns.
-    :rtype: typing.Tuple[typing.Dict[str, pd.DataFrame], typing.Dict[str, typing.List[str]]]
     """
     hdbg.dassert_isinstance(csv_paths, list)
-    hdbg.dassert_lt(0, len(csv_paths))
+    if tags is None:
+        import os
+        tags = [os.path.splitext(os.path.basename(p))[0] for p in csv_paths]
     
     tag_to_df: typing.Dict[str, pd.DataFrame] = {}
     cat_cols_map: typing.Dict[str, typing.List[str]] = {}
+    combined_dt_meta: typing.Dict[str, typing.Any] = {} # Store metadata here
 
     for path, tag in zip(csv_paths, tags):
+        # 1. Load and perform initial type conversion
         df = load_csv(path)
         df = hpanconv.convert_df(df)
-        df, _ = infer_and_convert_datetime_columns(df)
+        
+        # 2. Perform datetime inference and CAPTURE metadata
+        df, dt_meta = infer_and_convert_datetime_columns(df)
+        combined_dt_meta.update(dt_meta) # Merge metadata
+        
+        # 3. FIX: Automatically promote the first detected temporal column to 
+        # the Index for Quality and Duration reports.
+        temporal_cols = [c for c, m in dt_meta.items() if m.get("semantic_type") == "temporal"]
+        if temporal_cols:
+            df = df.set_index(temporal_cols[0], drop=False)
+            
         tag_to_df[tag] = df
 
+        # 4. Identify categorical/string columns
         cat_cols_map[tag] = df.select_dtypes(
             include=["object", "category", "string"]
         ).columns.tolist()
 
-    return tag_to_df, cat_cols_map
+    return tag_to_df, cat_cols_map, combined_dt_meta

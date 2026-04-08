@@ -23,9 +23,9 @@ import typing
 import dotenv
 import pandas as pd
 import research.agentic_data_science.schema_agent.schema_agent_hllmcli as radsasah
-import schema_agent_loader as radsasal
-import schema_agent_report as radsasar
-import schema_agent_stats as radsasas
+import research.agentic_data_science.schema_agent.schema_agent_loader as radsasal
+import research.agentic_data_science.schema_agent.schema_agent_report as radsasar
+import research.agentic_data_science.schema_agent.schema_agent_stats as radsasas
 
 import helpers.hdbg as hdbg
 import helpers.hlogging as hloggin
@@ -106,24 +106,28 @@ def run_pipeline(
     )
 
     # --- Load & type-coerce ---
-    tag_to_df, cat_cols_map = radsasal.prepare_dataframes(csv_paths, tags)
-
-    # Merge datetime metadata across all DataFrames
-    _, datetime_meta = radsasal.infer_and_convert_datetime_columns(
-        pd.concat(list(tag_to_df.values()), axis=0, ignore_index=True)
-    )
+    # UPDATED: We now capture datetime_meta during loading to ensure timezone 
+    # consistency and avoid re-inference warnings.
+    tag_to_df, cat_cols_map, datetime_meta = radsasal.prepare_dataframes(csv_paths, tags)
 
     # --- Compute stats ---
+    # The stats module now handles DatetimeIndex and filters out timestamp columns
+    # from math operations to prevent 'abs()' errors.
     stats = radsasas.compute_llm_agent_stats(
         tag_to_df,
         categorical_cols_map=cat_cols_map,
         metrics=metrics,
     )
+    
+    # Inject captured datetime metadata into the stats object for the LLM.
     stats["datetime_columns"] = datetime_meta
 
     # --- LLM scope ---
-    combined_df = pd.concat(list(tag_to_df.values()), axis=0, ignore_index=True)
+    # Combine dataframes for column selection logic. 
+    # Note: We preserve the DatetimeIndex by not using ignore_index=True.
+    combined_df = pd.concat(list(tag_to_df.values()), axis=0)
     columns_for_llm = radsasah._select_columns_for_llm(combined_df, scope=llm_scope)
+    
     _LOG.info(
         "LLM will profile %d / %d columns (scope=%s).",
         len(columns_for_llm),
@@ -147,7 +151,8 @@ def run_pipeline(
         )
 
     # --- Build column profiles ---
-    primary_df = list(tag_to_df.values())[0]
+    # We use the primary dataframe (first tag) as the template for the profile.
+    primary_df = tag_to_df[tags[0]]
     column_profiles = radsasar.build_column_profiles(
         df=primary_df,
         stats=stats,
@@ -161,6 +166,7 @@ def run_pipeline(
         column_profiles=column_profiles,
         output_path=output_json,
     )
+    
     radsasar.export_markdown_from_profiles(
         column_profiles,
         numeric_stats=stats.get("numeric_summary", {}),
@@ -168,7 +174,6 @@ def run_pipeline(
     )
 
     return tag_to_df, stats
-
 
 # =============================================================================
 # CLI
