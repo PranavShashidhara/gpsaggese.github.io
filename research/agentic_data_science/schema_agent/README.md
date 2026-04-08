@@ -1,46 +1,48 @@
 # Data Profiler Agent
 
-Automated statistical profiling and LLM-powered semantic analysis for CSV datasets. Generates column-level insights including semantic meaning, data quality assessment, and testable business hypotheses.
+Automated statistical profiling and LLM-powered semantic analysis for CSV datasets. Generates column-level insights including semantic classification, data quality assessment, and testable business hypotheses.
 
 ## Features
 
-- **Temporal Detection:** Auto-detects and converts date/datetime columns across multiple formats
-- **Statistical Profiling:** Computes numeric summaries, data quality metrics, and categorical distributions
-- **LLM Semantic Analysis:** Generates column roles (ID, Feature, Target, Timestamp), semantic meaning, and hypotheses
-- **Cost Optimization:** Filter columns before LLM analysis to control token usage and API costs
-- **Multi-Format Output:** JSON reports and Markdown summaries
+- **Temporal detection** — Auto-detects and converts date/datetime columns across multiple formats
+- **Statistical profiling** — Computes numeric summaries, data quality metrics, and categorical distributions
+- **LLM semantic analysis** — Infers column roles (ID, Feature, Target, Timestamp), semantic meaning, and hypotheses
+- **Cost optimization** — Filter columns prior to LLM analysis to control token usage and API costs
+- **Multi-format output** — JSON reports and Markdown summaries
 
 ## Setup
 
-Go into the schema folder:
+Navigate to the project directory:
 ```bash
 > cd research/agentic_data_science/schema_agent
 ```
 
-Install the requirements:
+Install dependencies:
 ```bash
 > pip install -r requirements.txt
 ```
 
-Set the `OPENAI_API_KEY` in your environment:
+Set your API key:
 ```bash
 > export OPENAI_API_KEY=sk-...
 ```
-Make the script executable 
-```bash 
+
+Make the entry point executable:
+```bash
 > chmod +x schema_agent.py
 ```
+
 ## Module Structure
 
-The agent is split into six focused modules:
+The agent is organized into six focused modules:
 
 | Module | Responsibility |
-|--------|---------------|
-| `schema_agent_models.py` | Pydantic schemas for type-safe column/dataset insights |
-| `schema_agent_loader.py` | CSV loading, type inference, datetime detection |
-| `schema_agent_stats.py` | Numeric summaries, quality reports, categorical distributions |
-| `schema_agent_llm.py` | Prompt building, OpenAI/LangChain calls, structured output parsing |
-| `schema_agent_report.py` | Column profiles, JSON and Markdown export |
+|--------|----------------|
+| `schema_agent_models.py` | Pydantic schemas for type-safe column and dataset insights |
+| `schema_agent_loader.py` | CSV loading, type inference, and datetime detection |
+| `schema_agent_stats.py` | Numeric summaries, quality reports, and categorical distributions |
+| `schema_agent_llm.py` | Prompt construction, OpenAI/LangChain calls, and structured output parsing |
+| `schema_agent_report.py` | Column profiles, JSON export, and Markdown export |
 | `schema_agent.py` | Pipeline orchestration and CLI entry point |
 
 ## Usage
@@ -51,52 +53,58 @@ The agent is split into six focused modules:
 > ./schema_agent.py data.csv
 ```
 
-Outputs:
-- `data_profile_report.json` — Machine-readable report
-- `data_profile_summary.md` — Human-readable summary
+Produces two output files:
+
+- `data_profile_report.json` — Machine-readable column profiles and statistics
+- `data_profile_summary.md` — Human-readable summary table
 
 ### Advanced
 
 ```bash
-# Multiple files with tags
+# Profile multiple files with custom tags
 > ./schema_agent.py dataset1.csv dataset2.csv --tags sales_2024 inv_q1
 
-# Cost-optimized: only high-null columns
+# Cost-optimized: analyze only high-null columns
 > ./schema_agent.py data.csv --llm-scope nulls --model gpt-4o-mini
 
-# Custom metrics and output
+# Custom metrics and output path
 > ./schema_agent.py data.csv --metrics mean std max --output-json my_report.json
 
-# LangChain backend
+# Use LangChain as the inference backend
 > ./schema_agent.py data.csv --use-langchain
 ```
 
-## Command-Line Arguments
+## Command-Line Reference
 
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `csv_paths` | Required | One or more CSV file paths |
-| `--tags` | File stems | Tags for each CSV (must match count) |
-| `--model` | `gpt-4o` | LLM model (`gpt-4o`, `gpt-4o-mini`, etc.) |
-| `--llm-scope` | `all` | Which columns to profile: `all`, `semantic`, `nulls` |
-| `--metrics` | Subset | Numeric metrics: `mean`, `std`, `min`, `25%`, `50%`, `75%`, `max` |
-| `--use-langchain` | False | Use LangChain instead of hllmcli |
-| `--output-json` | `data_profile_report.json` | JSON report path |
-| `--output-md` | `data_profile_summary.md` | Markdown summary path |
+| `--tags` | File stems | Labels for each CSV (count must match `csv_paths`) |
+| `--model` | `gpt-4o` | OpenAI model (`gpt-4o`, `gpt-4o-mini`, etc.) |
+| `--llm-scope` | `all` | Column selection strategy: `all`, `semantic`, or `nulls` |
+| `--metrics` | Subset | Numeric summary stats: `mean`, `std`, `min`, `25%`, `50%`, `75%`, `max` |
+| `--use-langchain` | `false` | Use LangChain instead of the default inference client |
+| `--output-json` | `data_profile_report.json` | Output path for the JSON report |
+| `--output-md` | `data_profile_summary.md` | Output path for the Markdown summary |
 
 ## LLM Scoping
 
-- **`all`** — Every column (highest cost, comprehensive)
-- **`semantic`** — Non-numeric columns only
-- **`nulls`** — Columns with >5% null values (cost-optimized)
+Control which columns are sent to the LLM to manage cost and latency:
+
+| Scope | Behavior |
+|-------|----------|
+| `all` | Profiles every column — most comprehensive, highest cost |
+| `semantic` | Profiles non-numeric columns only |
+| `nulls` | Profiles only columns with >5% null values — most cost-efficient |
 
 ## Python API
 
 ### Full pipeline
 
 ```python
-import schema_agent as radsasag
-tag_to_df, stats = radsasag.run_pipeline(
+import schema_agent as agent
+
+tag_to_df, stats = agent.run_pipeline(
     csv_paths=["data.csv"],
     model="gpt-4o-mini",
     llm_scope="semantic"
@@ -108,30 +116,39 @@ tag_to_df, stats = radsasag.run_pipeline(
 Each module can be imported independently for exploratory use or testing:
 
 ```python
-import schema_agent_loader as radsasal
-import schema_agent_stats as radsasas
-import schema_agent_llm as radsasal
-import schema_agent_report as radsasar
+import schema_agent_loader as loader
+import schema_agent_stats as stats
+import schema_agent_llm as llm
+import schema_agent_report as report
 ```
 
-## Output
+## Output Reference
 
-### data_profile_report.json
-Structured report with column profiles, technical stats, and LLM insights.
+### `data_profile_report.json`
 
-### data_profile_summary.md
-Formatted table summary: Column | Meaning | Role | Quality | Hypotheses
+Structured report containing per-column profiles, statistical summaries, and LLM-generated insights.
+
+### `data_profile_summary.md`
+
+Formatted Markdown table with columns: **Column · Meaning · Role · Quality · Hypotheses**
 
 ## Troubleshooting
 
-**API Key Error:**
+**API key not set**
+
 ```bash
 > export OPENAI_API_KEY=sk-...
 ```
 
-**Validation Errors:**
-- Use `--llm-scope nulls` or `--llm-scope semantic` to reduce columns
-- Try `--model gpt-4o-mini`
+**Validation or parsing errors**
 
-**Datetime Detection:**
-Skipped automatically if no temporal columns detected.
+Reduce the number of columns sent to the LLM:
+
+```bash
+> ./schema_agent.py data.csv --llm-scope nulls
+> ./schema_agent.py data.csv --llm-scope semantic --model gpt-4o-mini
+```
+
+**No datetime columns detected**
+
+Expected behavior — datetime detection is skipped automatically when no temporal columns are present in the dataset.
