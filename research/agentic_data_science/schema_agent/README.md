@@ -102,7 +102,7 @@ Control which columns are sent to the LLM to manage cost and latency:
 ### Full pipeline
 
 ```python
-import schema_agent as agent
+import research.agentic_data_science.schema_agent.schema_agent as agent
 
 tag_to_df, stats = agent.run_pipeline(
     csv_paths=["data.csv"],
@@ -116,10 +116,10 @@ tag_to_df, stats = agent.run_pipeline(
 Each module can be imported independently for exploratory use or testing:
 
 ```python
-import schema_agent_loader as loader
-import schema_agent_stats as stats
-import schema_agent_llm as llm
-import schema_agent_report as report
+import research.agentic_data_science.schema_agent.schema_agent_loader as loader
+import research.agentic_data_science.schema_agent.schema_agent_stats as stats
+import research.agentic_data_science.schema_agent.schema_agent_llm as llm
+import research.agentic_data_science.schema_agent.schema_agent_report as report
 ```
 
 ## Output Reference

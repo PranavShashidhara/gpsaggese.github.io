@@ -12,7 +12,7 @@ import langchain_core.prompts as lcpr
 import langchain_openai as lco
 import pandas as pd
 import pydantic
-import schema_agent_models as radsasam
+import research.agentic_data_science.schema_agent.schema_agent_models as radsasam
 
 import helpers.hdbg as hdbg
 import helpers.hllm_cli as hllmcli
