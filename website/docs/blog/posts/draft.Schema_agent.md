@@ -34,7 +34,7 @@ This tutorial's goal is to show you in 30 minutes:
 
 ## Official References
 
-- [Data Profiler Agent Repository](../../../../research/agentic_data_science/schema_agent)
+- [Data Profiler Agent Repository](../../../  ../research/agentic_data_science/schema_agent)
 - [README](../../../../research/agentic_data_science/schema_agent/README.md)
 
 ## Tutorial Content
