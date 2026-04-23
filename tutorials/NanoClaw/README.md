@@ -139,11 +139,12 @@ mcp__hpandas__df_to_str
 Once connected, interact with your dataset entirely in natural language:
 
 | Task | Prompt |
-|||
+|---|---|
 | Overview | `"Describe the dataset"` |
 | Data quality | `"Find missing values"` |
 | Filtering | `"Show users with income > 50k"` |
 | Aggregation | `"Average spend score by country"` |
+
 
 ## MCP Tools Reference
 
@@ -152,7 +153,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### I/O
 
 | Tool | Description |
-|||
+|---|---|
 | `read_csv` | Read a CSV (or `.gz` / `.zip`) file from disk into a DataFrame |
 | `read_parquet` | Read a Parquet file from disk into a DataFrame |
 | `write_csv` | Write a DataFrame to a CSV file |
@@ -162,7 +163,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Display
 
 | Tool | Description |
-|||
+|---|---|
 | `get_df_signature` | Compact shape + head/tail summary of a DataFrame |
 | `convert_df_to_json_string` | Pretty-printed JSON showing head and tail rows |
 | `df_to_str` | Human-readable string representation (head + tail) |
@@ -170,7 +171,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Cleaning
 
 | Tool | Description |
-|||
+|---|---|
 | `drop_duplicates` | Remove duplicate rows, optionally considering the index |
 | `dropna` | Drop rows or columns containing NaN values |
 | `drop_axis_with_all_nans` | Remove rows and/or columns that are entirely NaN |
@@ -181,7 +182,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Analysis
 
 | Tool | Description |
-|||
+|---|---|
 | `describe_df` | Descriptive statistics (wraps `df.describe()`) |
 | `print_column_variability` | Unique value counts and coefficient of variation per column |
 | `rolling_corr_over_time` | Exponentially-weighted rolling correlation matrix over a time index |
@@ -189,7 +190,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Filtering & Transformation
 
 | Tool | Description |
-|||
+|---|---|
 | `filter_df` | Keep or drop rows matching specific values in a column |
 | `head` | Return the first N rows |
 | `subset_df` | Return a random sample of N rows |
@@ -202,7 +203,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Type Conversion
 
 | Tool | Description |
-|||
+|---|---|
 | `infer_column_types` | Detect whether each column is bool / numeric / string |
 | `convert_df_types` | Auto-convert each column to its detected type |
 | `convert_col_to_int` | Cast a single column to `int64` |
@@ -211,7 +212,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Comparison
 
 | Tool | Description |
-|||
+|---|---|
 | `compare_dfs` | Element-wise diff (absolute or % change) between two DataFrames |
 | `compare_nans_in_dataframes` | Highlight positions where NaN status differs between two DataFrames |
 | `find_common_columns` | Report columns shared across multiple DataFrames |
@@ -219,7 +220,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 ### Validation
 
 | Tool | Description |
-|||
+|---|---|
 | `check_index_is_datetime` | Assert the DataFrame index is a `DatetimeIndex` |
 | `resolve_column_names` | Validate and resolve a column specification to a concrete list |
 
@@ -228,7 +229,7 @@ All tools are exposed under the `mcp__hpandas__` namespace. DataFrames are passe
 A lightweight session-based reporting system for logging pass/fail checks during analysis.
 
 | Tool | Description |
-|||
+|---|---|
 | `check_summary_create` | Start a new named check session |
 | `check_summary_add` | Append a pass/fail check result to a session |
 | `check_summary_report` | Print a formatted summary table for a session |
@@ -236,7 +237,7 @@ A lightweight session-based reporting system for logging pass/fail checks during
 ### MultiIndex
 
 | Tool | Description |
-|||
+|---|---|
 | `multiindex_df_info` | Return shape, level values, and time range metadata for a 2-level MultiIndex DataFrame |
 
 ## Deployment Layout
@@ -244,7 +245,7 @@ A lightweight session-based reporting system for logging pass/fail checks during
 NanoClaw and the MCP server are **separate processes** — they communicate over JSON-RPC, not shared memory or a shared container.
 
 | Component | Location |
-|||
+|---|---|
 | NanoClaw agent | Docker / Apple Container |
 | `hpandas` MCP server | Host machine (Python process) |
 | Dataset (`dummy_users.csv`) | Local filesystem |

@@ -29,15 +29,16 @@ Import as:
 import io
 import json
 import traceback
-from typing import Any, Dict, List, Optional, Union
+import typing 
 
 import numpy as np
 import pandas as pd
-from mcp.server.fastmcp import FastMCP
+import mcp.server.fastmcp  as mcp_fastmcp #import FastMCP
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Helpers – JSON ↔ DataFrame
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
 
 def _df_from_json(payload: str) -> pd.DataFrame:
     """
@@ -70,11 +71,15 @@ def _df_from_json(payload: str) -> pd.DataFrame:
 
 
 def _df_to_json(df: pd.DataFrame) -> str:
-    """Serialise a DataFrame to a JSON string (records + index)."""
+    """
+    Serialise a DataFrame to a JSON string (records + index).
+    """
     return json.dumps(
         {
             "records": json.loads(
-                df.to_json(orient="records", date_format="iso", default_handler=str)
+                df.to_json(
+                    orient="records", date_format="iso", default_handler=str
+                )
             ),
             "index": [str(i) for i in df.index],
             "shape": list(df.shape),
@@ -87,7 +92,9 @@ def _df_to_json(df: pd.DataFrame) -> str:
 def _srs_to_json(srs: pd.Series) -> str:
     return json.dumps(
         {
-            "values": json.loads(srs.to_json(date_format="iso", default_handler=str)),
+            "values": json.loads(
+                srs.to_json(date_format="iso", default_handler=str)
+            ),
             "name": srs.name,
             "dtype": str(srs.dtype),
         },
@@ -96,18 +103,20 @@ def _srs_to_json(srs: pd.Series) -> str:
 
 
 def _safe(fn, *args, **kwargs):
-    """Call *fn* and return (result, error_str) tuple."""
+    """
+    Call *fn* and return (result, error_str) tuple.
+    """
     try:
         return fn(*args, **kwargs), None
     except Exception:
         return None, traceback.format_exc()
 
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Server
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-mcp = FastMCP(
+mcp = mcp_fastmcp.FastMCP(
     "hpandas",
     instructions=(
         "Tools that wrap the hpandas helper library for pandas DataFrames. "
@@ -117,9 +126,10 @@ mcp = FastMCP(
 )
 
 
-# ===========================================================================
+# =============================================================================
 # ── DISPLAY ─────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def get_df_signature(df_json: str, num_rows: int = 6) -> str:
@@ -131,8 +141,10 @@ def get_df_signature(df_json: str, num_rows: int = 6) -> str:
     :return: human-readable signature string.
     """
     df = _df_from_json(df_json)
-    txt: List[str] = [f"df.shape={df.shape}"]
-    with pd.option_context("display.max_colwidth", int(1e6), "display.max_columns", None):
+    txt: typing.List[str] = [f"df.shape={df.shape}"]
+    with pd.option_context(
+        "display.max_colwidth", int(1e6), "display.max_columns", None
+    ):
         if len(df) > num_rows:
             txt.append(f"df.head=\n{df.head(num_rows // 2)}")
             txt.append(f"df.tail=\n{df.tail(num_rows // 2)}")
@@ -144,8 +156,8 @@ def get_df_signature(df_json: str, num_rows: int = 6) -> str:
 @mcp.tool()
 def convert_df_to_json_string(
     df_json: str,
-    n_head: Optional[int] = 10,
-    n_tail: Optional[int] = 10,
+    n_head: typing.Optional[int] = 10,
+    n_tail: typing.Optional[int] = 10,
 ) -> str:
     """
     Convert a DataFrame to a pretty-printed JSON string showing head and tail.
@@ -158,33 +170,46 @@ def convert_df_to_json_string(
     df = _df_from_json(df_json)
     shape = f"original shape={df.shape}"
     head_df = df.head(n_head) if n_head is not None else df
-    head_json = head_df.to_json(orient="index", force_ascii=False, indent=4,
-                                default_handler=str, date_format="iso", date_unit="s")
+    head_json = head_df.to_json(
+        orient="index",
+        force_ascii=False,
+        indent=4,
+        default_handler=str,
+        date_format="iso",
+        date_unit="s",
+    )
     if n_tail is not None:
         tail_json = df.tail(n_tail).to_json(
-            orient="index", force_ascii=False, indent=4,
-            default_handler=str, date_format="iso", date_unit="s")
+            orient="index",
+            force_ascii=False,
+            indent=4,
+            default_handler=str,
+            date_format="iso",
+            date_unit="s",
+        )
     else:
         tail_json = ""
     return "\n".join([shape, "Head:", head_json, "Tail:", tail_json])
 
 
-# ===========================================================================
+# =============================================================================
 # ── CLEAN ───────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def drop_duplicates(
     df_json: str,
     use_index: bool = False,
-    column_subset: Optional[List[str]] = None,
+    column_subset: typing.Optional[typing.List[str]] = None,
     keep: str = "first",
 ) -> str:
     """
     Drop duplicate rows from a DataFrame.
 
     :param df_json: DataFrame serialised with _df_to_json.
-    :param use_index: if True, the index is included when detecting duplicates.
+    :param use_index: if True, the index is included when detecting
+        duplicates.
     :param column_subset: columns to consider; None = all columns.
     :param keep: which duplicate to keep – "first", "last", or False.
     :return: deduplicated DataFrame as JSON.
@@ -208,7 +233,7 @@ def dropna(
     drop_infs: bool = False,
     axis: int = 0,
     how: str = "any",
-    subset: Optional[List[str]] = None,
+    subset: typing.Optional[typing.List[str]] = None,
 ) -> str:
     """
     Drop rows (or columns) that contain NaN values.
@@ -254,7 +279,7 @@ def drop_axis_with_all_nans(
 
 
 @mcp.tool()
-def impute_nans(df_json: str, column: str, value: Any) -> str:
+def impute_nans(df_json: str, column: str, value: typing.Any) -> str:
     """
     Replace string literal "nan" values in a column with a specified value.
 
@@ -274,8 +299,8 @@ def impute_nans(df_json: str, column: str, value: Any) -> str:
 def remove_outliers(
     df_json: str,
     lower_quantile: float,
-    column_set: Optional[List[str]] = None,
-    upper_quantile: Optional[float] = None,
+    column_set: typing.Optional[typing.List[str]] = None,
+    upper_quantile: typing.Optional[float] = None,
 ) -> str:
     """
     Clip values outside the given quantile range to NaN.
@@ -297,9 +322,10 @@ def remove_outliers(
     return _df_to_json(df)
 
 
-# ===========================================================================
+# =============================================================================
 # ── COMPARE ─────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def compare_dfs(
@@ -314,8 +340,10 @@ def compare_dfs(
 
     :param df1_json: first DataFrame as JSON.
     :param df2_json: second DataFrame as JSON.
-    :param row_mode: "equal" (must share index) or "inner" (intersect index).
-    :param column_mode: "equal" (must share columns) or "inner" (intersect columns).
+    :param row_mode: "equal" (must share index) or "inner" (intersect
+        index).
+    :param column_mode: "equal" (must share columns) or "inner"
+        (intersect columns).
     :param diff_mode: "diff" (absolute) or "pct_change" (percentage).
     :return: diff DataFrame as JSON.
     """
@@ -362,7 +390,7 @@ def compare_nans_in_dataframes(df1_json: str, df2_json: str) -> str:
 
 
 @mcp.tool()
-def find_common_columns(names_json: str, dfs_json: List[str]) -> str:
+def find_common_columns(names_json: str, dfs_json: typing.List[str]) -> str:
     """
     Report columns shared between every pair of DataFrames.
 
@@ -376,17 +404,23 @@ def find_common_columns(names_json: str, dfs_json: List[str]) -> str:
     for i in range(len(dfs)):
         for j in range(i + 1, len(dfs)):
             common = [c for c in dfs[i].columns if c in dfs[j].columns]
-            rows.append({
-                "table1": names[i], "num_cols1": len(dfs[i].columns),
-                "table2": names[j], "num_cols2": len(dfs[j].columns),
-                "num_common": len(common), "common_cols": ", ".join(common),
-            })
+            rows.append(
+                {
+                    "table1": names[i],
+                    "num_cols1": len(dfs[i].columns),
+                    "table2": names[j],
+                    "num_cols2": len(dfs[j].columns),
+                    "num_common": len(common),
+                    "common_cols": ", ".join(common),
+                }
+            )
     return _df_to_json(pd.DataFrame(rows))
 
 
-# ===========================================================================
+# =============================================================================
 # ── CONVERSION ──────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def to_series(df_json: str, series_dtype: str = "float64") -> str:
@@ -399,7 +433,9 @@ def to_series(df_json: str, series_dtype: str = "float64") -> str:
     """
     df = _df_from_json(df_json)
     if df.shape[1] != 1:
-        raise ValueError(f"Expected a single-column DataFrame, got {df.shape[1]} columns.")
+        raise ValueError(
+            f"Expected a single-column DataFrame, got {df.shape[1]} columns."
+        )
     if df.empty:
         return _srs_to_json(pd.Series(dtype=series_dtype))
     if df.shape[0] > 1:
@@ -419,7 +455,7 @@ def infer_column_types(df_json: str) -> str:
     :return: JSON object mapping column name → type string.
     """
     df = _df_from_json(df_json)
-    result: Dict[str, str] = {}
+    result: typing.Dict[str, str] = {}
     for col in df.columns:
         is_bool = float(df[col].map(lambda x: isinstance(x, bool)).mean())
         is_num = float(pd.to_numeric(df[col], errors="coerce").notna().mean())
@@ -436,7 +472,8 @@ def infer_column_types(df_json: str) -> str:
 @mcp.tool()
 def convert_df_types(df_json: str) -> str:
     """
-    Convert every column to its detected predominant type (bool / numeric / string).
+    Convert every column to its detected predominant type (bool / numeric /
+    string).
 
     :param df_json: DataFrame as JSON.
     :return: type-converted DataFrame as JSON.
@@ -449,8 +486,15 @@ def convert_df_types(df_json: str) -> str:
         is_num = float(pd.to_numeric(s, errors="coerce").notna().mean())
         is_str = float(s.map(lambda x: isinstance(x, str)).mean())
         if is_bool >= is_num and is_bool != 0:
-            out[col] = s.map(lambda x: True if x in ["True", 1, "1", "true", True]
-                             else (False if x in [0, "0", "False", False, "false"] else None))
+            out[col] = s.map(
+                lambda x: (
+                    True
+                    if x in ["True", 1, "1", "true", True]
+                    else (
+                        False if x in [0, "0", "False", False, "false"] else None
+                    )
+                )
+            )
         elif is_num >= is_str and is_num != 0:
             out[col] = pd.to_numeric(s, errors="coerce")
         else:
@@ -472,12 +516,13 @@ def convert_col_to_int(df_json: str, col: str) -> str:
     return _df_to_json(df)
 
 
-# ===========================================================================
+# =============================================================================
 # ── DASSERT (validation) ────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
-def check_index_is_datetime(df_json: str) -> Dict[str, Any]:
+def check_index_is_datetime(df_json: str) -> typing.Dict[str, typing.Any]:
     """
     Check whether the DataFrame index is a DatetimeIndex.
 
@@ -492,12 +537,13 @@ def check_index_is_datetime(df_json: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def check_unique_index(df_json: str) -> Dict[str, Any]:
+def check_unique_index(df_json: str) -> typing.Dict[str, typing.Any]:
     """
     Check whether the DataFrame index contains duplicates.
 
     :param df_json: DataFrame as JSON.
-    :return: {"is_unique": bool, "num_duplicates": int, "duplicate_values": list}.
+    :return: {"is_unique": bool, "num_duplicates": int,
+        "duplicate_values": list}.
     """
     df = _df_from_json(df_json)
     dups = df.index[df.index.duplicated(keep=False)].tolist()
@@ -509,28 +555,32 @@ def check_unique_index(df_json: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def check_increasing_index(df_json: str) -> Dict[str, Any]:
+def check_increasing_index(df_json: str) -> typing.Dict[str, typing.Any]:
     """
     Check whether the DataFrame index is monotonically increasing.
 
     :param df_json: DataFrame as JSON.
-    :return: {"is_monotonic_increasing": bool, "is_strictly_increasing": bool}.
+    :return: {"is_monotonic_increasing": bool, "is_strictly_increasing":
+        bool}.
     """
     df = _df_from_json(df_json)
     return {
         "is_monotonic_increasing": bool(df.index.is_monotonic_increasing),
-        "is_strictly_increasing": bool(df.index.is_monotonic_increasing and df.index.is_unique),
+        "is_strictly_increasing": bool(
+            df.index.is_monotonic_increasing and df.index.is_unique
+        ),
     }
 
 
 @mcp.tool()
-def check_axes_equal(df1_json: str, df2_json: str) -> Dict[str, Any]:
+def check_axes_equal(df1_json: str, df2_json: str) -> typing.Dict[str, typing.Any]:
     """
     Check whether two DataFrames share identical indices and columns.
 
     :param df1_json: first DataFrame as JSON.
     :param df2_json: second DataFrame as JSON.
-    :return: dict with "index_equal", "columns_equal" booleans and difference lists.
+    :return: dict with "index_equal", "columns_equal" booleans and
+        difference lists.
     """
     df1 = _df_from_json(df1_json)
     df2 = _df_from_json(df2_json)
@@ -539,20 +589,25 @@ def check_axes_equal(df1_json: str, df2_json: str) -> Dict[str, Any]:
     return {
         "index_equal": idx_eq,
         "columns_equal": col_eq,
-        "index_only_in_df1": [str(x) for x in df1.index.difference(df2.index)[:10]],
-        "index_only_in_df2": [str(x) for x in df2.index.difference(df1.index)[:10]],
+        "index_only_in_df1": [
+            str(x) for x in df1.index.difference(df2.index)[:10]
+        ],
+        "index_only_in_df2": [
+            str(x) for x in df2.index.difference(df1.index)[:10]
+        ],
         "columns_only_in_df1": list(df1.columns.difference(df2.columns)),
         "columns_only_in_df2": list(df2.columns.difference(df1.columns)),
     }
 
 
 @mcp.tool()
-def check_series_dtype(series_json: str, expected_dtype: str) -> Dict[str, Any]:
+def check_series_dtype(series_json: str, expected_dtype: str) -> typing.Dict[str, typing.Any]:
     """
     Check whether a Series has the expected dtype.
 
     :param series_json: Series serialised by _srs_to_json.
-    :param expected_dtype: dtype string to check against, e.g. "float64".
+    :param expected_dtype: dtype string to check against, e.g.
+        "float64".
     :return: {"matches": bool, "actual_dtype": str}.
     """
     data = json.loads(series_json)
@@ -563,16 +618,17 @@ def check_series_dtype(series_json: str, expected_dtype: str) -> Dict[str, Any]:
     }
 
 
-# ===========================================================================
+# =============================================================================
 # ── TRANSFORM ───────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def trim_df(
     df_json: str,
-    start_ts: Optional[str] = None,
-    end_ts: Optional[str] = None,
-    ts_col_name: Optional[str] = None,
+    start_ts: typing.Optional[str] = None,
+    end_ts: typing.Optional[str] = None,
+    ts_col_name: typing.Optional[str] = None,
     left_close: bool = True,
     right_close: bool = True,
 ) -> str:
@@ -621,10 +677,10 @@ def merge_dfs(
     df1_json: str,
     df2_json: str,
     how: str = "outer",
-    on: Optional[List[str]] = None,
-    left_on: Optional[List[str]] = None,
-    right_on: Optional[List[str]] = None,
-    suffixes: Optional[List[str]] = None,
+    on: typing.Optional[typing.List[str]] = None,
+    left_on: typing.Optional[typing.List[str]] = None,
+    right_on: typing.Optional[typing.List[str]] = None,
+    suffixes: typing.Optional[typing.List[str]] = None,
 ) -> str:
     """
     Merge two DataFrames (wrapper around pd.merge).
@@ -641,8 +697,9 @@ def merge_dfs(
     df1 = _df_from_json(df1_json)
     df2 = _df_from_json(df2_json)
     sfx = tuple(suffixes) if suffixes else ("_x", "_y")
-    merged = pd.merge(df1, df2, how=how, on=on, left_on=left_on,
-                      right_on=right_on, suffixes=sfx)
+    merged = pd.merge(
+        df1, df2, how=how, on=on, left_on=left_on, right_on=right_on, suffixes=sfx
+    )
     return _df_to_json(merged)
 
 
@@ -650,7 +707,7 @@ def merge_dfs(
 def filter_df(
     df_json: str,
     filter_col: str,
-    filter_values: List[Any],
+    filter_values: typing.List[typing.Any],
     mode: str = "keep",
 ) -> str:
     """
@@ -659,7 +716,8 @@ def filter_df(
     :param df_json: DataFrame as JSON.
     :param filter_col: column whose values are tested.
     :param filter_values: list of values to match.
-    :param mode: "keep" (rows matching filter_values) or "drop" (rows not matching).
+    :param mode: "keep" (rows matching filter_values) or "drop" (rows
+        not matching).
     :return: filtered DataFrame as JSON.
     """
     df = _df_from_json(df_json)
@@ -670,7 +728,7 @@ def filter_df(
 
 
 @mcp.tool()
-def remove_columns(df_json: str, columns: List[str]) -> str:
+def remove_columns(df_json: str, columns:  typing.List[str]) -> str:
     """
     Drop specified columns from a DataFrame.
 
@@ -724,9 +782,10 @@ def subset_df(df_json: str, nrows: int, seed: int = 42) -> str:
     return _df_to_json(df.sample(n, random_state=seed))
 
 
-# ===========================================================================
+# =============================================================================
 # ── UTILS ───────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def df_to_str(df_json: str, num_rows: int = 6) -> str:
@@ -739,9 +798,12 @@ def df_to_str(df_json: str, num_rows: int = 6) -> str:
     """
     df = _df_from_json(df_json)
     with pd.option_context(
-        "display.max_columns", None,
-        "display.max_colwidth", 200,
-        "display.width", 10000,
+        "display.max_columns",
+        None,
+        "display.max_colwidth",
+        200,
+        "display.width",
+        10000,
     ):
         if len(df) <= num_rows:
             return df.to_string()
@@ -794,13 +856,15 @@ def find_gaps_in_time_series(
 @mcp.tool()
 def resolve_column_names(
     df_json: str,
-    column_set: Optional[Union[str, List[str]]] = None,
-) -> List[str]:
+    column_set: typing.Optional[typing.Union[str, typing.List[str]]] = None,
+) -> typing.List[str]:
     """
     Resolve a column specification to a concrete list of column names.
 
-    :param df_json: DataFrame as JSON (used to validate column existence).
-    :param column_set: None = all columns, str = single column, list = subset.
+    :param df_json: DataFrame as JSON (used to validate column
+        existence).
+    :param column_set: None = all columns, str = single column, list =
+        subset.
     :return: resolved list of column names.
     """
     df = _df_from_json(df_json)
@@ -815,9 +879,10 @@ def resolve_column_names(
     return column_set
 
 
-# ===========================================================================
+# =============================================================================
 # ── MULTI-INDEX ─────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def multiindex_df_info(df_json: str) -> str:
@@ -848,14 +913,15 @@ def multiindex_df_info(df_json: str) -> str:
     return "\n".join(lines)
 
 
-# ===========================================================================
+# =============================================================================
 # ── IO ──────────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def read_csv(
     file_path: str,
-    index_col: Optional[Union[int, str]] = None,
+    index_col: typing.Optional[typing.Union[int, str]] = None,
     parse_dates: bool = True,
 ) -> str:
     """
@@ -866,7 +932,7 @@ def read_csv(
     :param parse_dates: attempt to parse the index as dates.
     :return: DataFrame as JSON.
     """
-    kwargs: Dict[str, Any] = {}
+    kwargs: typing.Dict[str, typing.Any] = {}
     if index_col is not None:
         kwargs["index_col"] = index_col
     if parse_dates:
@@ -920,9 +986,10 @@ def write_parquet(df_json: str, file_path: str) -> str:
     return f"Saved {df.shape[0]} rows × {df.shape[1]} columns to '{file_path}'"
 
 
-# ===========================================================================
+# =============================================================================
 # ── ANALYSIS ────────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
+
 
 @mcp.tool()
 def rolling_corr_over_time(
@@ -953,12 +1020,13 @@ def rolling_corr_over_time(
 
 
 @mcp.tool()
-def describe_df(df_json: str, percentiles: Optional[List[float]] = None) -> str:
+def describe_df(df_json: str, percentiles: typing.Optional[typing.List[float]] = None) -> str:
     """
     Return descriptive statistics for a DataFrame (wrapper of df.describe()).
 
     :param df_json: DataFrame as JSON.
-    :param percentiles: list of percentiles to include, e.g. [0.1, 0.5, 0.9].
+    :param percentiles: list of percentiles to include, e.g. [0.1, 0.5,
+        0.9].
     :return: describe DataFrame as JSON.
     """
     df = _df_from_json(df_json)
@@ -975,10 +1043,10 @@ def print_column_variability(df_json: str) -> str:
     :return: JSON object mapping column → {nunique, cv, dtype}.
     """
     df = _df_from_json(df_json)
-    result: Dict[str, Any] = {}
+    result: typing.Dict[str, typing.Any] = {}
     for col in df.columns:
         s = df[col]
-        info: Dict[str, Any] = {
+        info: typing.Dict[str, typing.Any] = {
             "nunique": int(s.nunique()),
             "dtype": str(s.dtype),
         }
@@ -989,12 +1057,12 @@ def print_column_variability(df_json: str) -> str:
     return json.dumps(result, indent=2)
 
 
-# ===========================================================================
+# =============================================================================
 # ── CHECK SUMMARY ───────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
 
 # In-process store for CheckSummary objects keyed by a session_id string.
-_SUMMARIES: Dict[str, Any] = {}
+_SUMMARIES: typing.Dict[str, typing.Any] = {}
 
 
 @mcp.tool()
@@ -1027,7 +1095,9 @@ def check_summary_add(
     :return: confirmation message.
     """
     if session_id not in _SUMMARIES:
-        raise KeyError(f"Session '{session_id}' not found. Call check_summary_create first.")
+        raise KeyError(
+            f"Session '{session_id}' not found. Call check_summary_create first."
+        )
     _SUMMARIES[session_id]["rows"].append(
         {"description": description, "comment": comment, "is_ok": is_ok}
     )
@@ -1057,9 +1127,9 @@ def check_summary_report(session_id: str) -> str:
     return "\n".join(report_lines)
 
 
-# ===========================================================================
+# =============================================================================
 # ── Entry point ─────────────────────────────────────────────────────────────
-# ===========================================================================
+# =============================================================================
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

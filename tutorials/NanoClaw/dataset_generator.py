@@ -1,18 +1,26 @@
-import pandas as pd
+"""
+Import as:
+
+import tutorials.NanoClaw.dataset_generator as tnadagen
+"""
+
 import numpy as np
+import pandas as pd
 
 np.random.seed(42)
 
 n = 100
 
-df = pd.DataFrame({
-    "user_id": range(1, n + 1),
-    "age": np.random.normal(30, 8, n).round(0),
-    "income": np.random.normal(60000, 15000, n).round(0),
-    "spend_score": np.random.uniform(1, 100, n).round(2),
-    "country": np.random.choice(["US", "UK", "IN", "DE"], n),
-    "signup_date": pd.date_range("2024-01-01", periods=n, freq="D")
-})
+df = pd.DataFrame(
+    {
+        "user_id": range(1, n + 1),
+        "age": np.random.normal(30, 8, n).round(0),
+        "income": np.random.normal(60000, 15000, n).round(0),
+        "spend_score": np.random.uniform(1, 100, n).round(2),
+        "country": np.random.choice(["US", "UK", "IN", "DE"], n),
+        "signup_date": pd.date_range("2024-01-01", periods=n, freq="D"),
+    }
+)
 
 # Add missing values
 df.loc[np.random.choice(n, 10, replace=False), "income"] = np.nan
