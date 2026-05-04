@@ -1,4 +1,4 @@
-# Nanoclaw Tutorial - Agentic EDA System Using MCP Tools
+# Nanoclaw
 
 An end-to-end exploratory data analysis system powered by a Claude agent (NanoClaw) and a custom MCP server (`hpandas`). Instead of writing pandas code manually, you describe your analysis in plain English — the agent translates it into tool calls against your dataset in real time.
 
