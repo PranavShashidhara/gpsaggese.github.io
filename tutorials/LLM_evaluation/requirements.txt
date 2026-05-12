@@ -1,0 +1,36 @@
+# Core LLM
+openai
+anthropic
+langchain
+langchain-openai
+autogen
+
+# Evaluation
+ragas
+deepeval
+
+# RAG / Embeddings
+langchain-community
+chromadb
+sentence-transformers
+pypdf
+
+# Data
+pandas
+numpy
+
+# Notebook
+jupyterlab
+jupytext
+ipywidgets
+
+# Utilities
+python-dotenv
+requests
+httpx
+
+# Logging
+loguru
+
+# Testing
+pytest
