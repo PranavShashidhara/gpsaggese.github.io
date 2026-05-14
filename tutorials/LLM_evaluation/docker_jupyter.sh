@@ -15,14 +15,16 @@ set -e
 
 # Import the utility functions.
 GIT_ROOT=$(git rev-parse --show-toplevel)
-source $GIT_ROOT/class_project/project_template/utils.sh
+source "$GIT_ROOT/class_project/project_template/utils.sh"
 
 # Parse command-line options and set Jupyter configuration variables.
 parse_docker_jupyter_args "$@"
 
 # Load Docker configuration variables for this script.
-get_docker_vars_script ${BASH_SOURCE[0]}
-source $DOCKER_NAME
+get_docker_vars_script "${BASH_SOURCE[0]}"
+source "$DOCKER_NAME"
+
+# Print Docker configuration variables.
 print_docker_vars
 
 # List available Docker images and inspect architecture.
@@ -30,13 +32,21 @@ list_and_inspect_docker_image
 
 # Run the Docker container with Jupyter Lab.
 CMD=$(get_run_jupyter_cmd "${BASH_SOURCE[0]}" "$OLD_CMD_OPTS")
-CONTAINER_NAME=$IMAGE_NAME
-# Kill existing container if -f flag is set.
-kill_existing_container_if_forced
 
+CONTAINER_NAME=$IMAGE_NAME
+
+# Get Docker command and base options.
 DOCKER_CMD=$(get_docker_jupyter_command)
-DOCKER_CMD_OPTS=$(get_docker_jupyter_options $CONTAINER_NAME $JUPYTER_HOST_PORT $JUPYTER_USE_VIM)
-# Add tutorial-specific environment variables.
+
+DOCKER_CMD_OPTS=$(get_docker_jupyter_options \
+    "$CONTAINER_NAME" \
+    "$JUPYTER_HOST_PORT" \
+    "$JUPYTER_USE_VIM")
+
+# Add bind mount + environment variables.
 DOCKER_CMD_OPTS="$DOCKER_CMD_OPTS \
+    -v $GIT_ROOT:/workspace \
     -e OPENAI_API_KEY=$OPENAI_API_KEY"
+
+# Run the Docker container.
 run "$DOCKER_CMD $DOCKER_CMD_OPTS $FULL_IMAGE_NAME $CMD"
