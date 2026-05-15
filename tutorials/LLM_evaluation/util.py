@@ -44,9 +44,12 @@ from ragas.metrics import (
     context_precision,
     context_recall,
 )
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
 
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 # =========================================================
 # CONSTANTS
@@ -424,8 +427,11 @@ def run_ragas_evaluation(
     query: str,
     answer: str,
     retrieved_contexts: list[str],
+    ground_truth: str,
 ) -> MetricDict:
-
+    """
+    Run RAGAS evaluation with robust score extraction.
+    """
     if not retrieved_contexts:
         return {
             "faithfulness": 0.0,
@@ -433,10 +439,15 @@ def run_ragas_evaluation(
             "grounding_score": 0.0,
         }
 
+    # Use wrappers to ensure compatibility with Ragas internal expectations
+    r_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o"))
+    r_embeddings = LangchainEmbeddingsWrapper(OpenAIEmbeddings())
+
     dataset = Dataset.from_dict({
         "question": [query],
         "answer": [answer],
         "contexts": [retrieved_contexts],
+        "reference": [ground_truth],
     })
 
     result = evaluate(
@@ -447,27 +458,36 @@ def run_ragas_evaluation(
             context_precision,
             context_recall,
         ],
+        llm=r_llm,
+        embeddings=r_embeddings,
     )
 
-    # safer extraction (new RAGAS returns nested structure sometimes)
-    def safe(metric):
-        if hasattr(result, "scores"):
-            return float(result.scores.get(metric, 0.0))
-        if isinstance(result, dict):
-            return float(result.get(metric, 0.0))
-        return 0.0
+    # Convert Result object to a dictionary via Pandas for reliable indexing
+    try:
+        # result.to_pandas() returns a DataFrame; we take the first row (iloc[0])
+        scores_dict = result.to_pandas().iloc[0].to_dict()
+        
+        faith = float(scores_dict.get("faithfulness", 0.0))
+        ctx_p = float(scores_dict.get("context_precision", 0.0))
+        ctx_r = float(scores_dict.get("context_recall", 0.0))
+    except Exception as e:
+        # Fallback for environments where Pandas behavior might differ
+        print(f"⚠️ Ragas score extraction fallback: {e}")
+        # Attempt to access the 'scores' attribute directly as a fallback
+        try:
+            s = result.scores
+            faith = s["faithfulness"][0] if isinstance(s["faithfulness"], list) else s["faithfulness"]
+            ctx_p = s["context_precision"][0] if isinstance(s["context_precision"], list) else s["context_precision"]
+            ctx_r = s["context_recall"][0] if isinstance(s["context_recall"], list) else s["context_recall"]
+        except:
+            faith, ctx_p, ctx_r = 0.0, 0.0, 0.0
 
-    faith = safe("faithfulness")
-
-    ctx_precision = safe("context_precision")
-    ctx_recall = safe("context_recall")
-
-    ctx_rel = (ctx_precision + ctx_recall) / 2
+    ctx_rel = (ctx_p + ctx_r) / 2
 
     return {
-        "faithfulness": round(faith, 4),
-        "context_relevance": round(ctx_rel, 4),
-        "grounding_score": round((faith + ctx_rel) / 2, 4),
+        "faithfulness": round(float(faith), 4),
+        "context_relevance": round(float(ctx_rel), 4),
+        "grounding_score": round(float((faith + ctx_rel) / 2), 4),
     }
 
 # =========================================================
@@ -655,6 +675,7 @@ def evaluate_trace(
         trace.task_input,
         trace.final_response,
         contexts,
+        ground_truth
     )
 
     deepev = run_deepeval_evaluation(
